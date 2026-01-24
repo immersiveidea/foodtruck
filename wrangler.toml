@@ -6,8 +6,8 @@ compatibility_date = "2024-01-01"
 # Then replace the id below with the output
 [[kv_namespaces]]
 binding = "CONTENT"
-id = "<your-namespace-id>"
+id = "a1c14d5b12214f8387b677a0d77e4a19"
 
 # For local development, create a preview namespace:
 # npx wrangler kv:namespace create "CONTENT" --preview
-# preview_id = "<your-preview-namespace-id>"
+preview_id = "3fdc036dcc1c4707adbe5323d90b292a"
