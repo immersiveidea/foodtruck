@@ -1,13 +1,9 @@
 name = "foodtruck"
 compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
 
 # KV namespace for storing menu and schedule data
-# Run: npx wrangler kv:namespace create "CONTENT"
-# Then replace the id below with the output
 [[kv_namespaces]]
 binding = "CONTENT"
 id = "a1c14d5b12214f8387b677a0d77e4a19"
-
-# For local development, create a preview namespace:
-# npx wrangler kv:namespace create "CONTENT" --preview
 preview_id = "3fdc036dcc1c4707adbe5323d90b292a"
