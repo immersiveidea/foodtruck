@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { MenuData, ScheduleData, ScheduleLocation } from '../types'
+import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData } from '../types'
 
 const adminKey = ref(localStorage.getItem('adminKey') || '')
 const isAuthenticated = ref(false)
-const activeTab = ref<'menu' | 'schedule'>('menu')
+const activeTab = ref<'menu' | 'schedule' | 'bookings'>('menu')
 const loading = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -15,6 +15,10 @@ const selectedCategoryId = ref<string | null>(null)
 // Schedule state
 const scheduleData = ref<ScheduleData>([])
 const editingEvent = ref<ScheduleLocation | null>(null)
+
+// Bookings state
+const bookingsData = ref<BookingsData>([])
+const expandedBookingId = ref<string | null>(null)
 
 const selectedCategory = computed(() =>
   menuData.value.categories.find(c => c.id === selectedCategoryId.value)
@@ -47,9 +51,10 @@ async function authenticate() {
 async function loadData() {
   loading.value = true
   try {
-    const [menuRes, scheduleRes] = await Promise.all([
+    const [menuRes, scheduleRes, bookingsRes] = await Promise.all([
       fetch('/api/admin/menu', { headers: { 'X-Admin-Key': adminKey.value } }),
-      fetch('/api/admin/schedule', { headers: { 'X-Admin-Key': adminKey.value } })
+      fetch('/api/admin/schedule', { headers: { 'X-Admin-Key': adminKey.value } }),
+      fetch('/api/admin/bookings', { headers: { 'X-Admin-Key': adminKey.value } })
     ])
 
     if (menuRes.ok) {
@@ -62,6 +67,10 @@ async function loadData() {
 
     if (scheduleRes.ok) {
       scheduleData.value = await scheduleRes.json()
+    }
+
+    if (bookingsRes.ok) {
+      bookingsData.value = await bookingsRes.json()
     }
   } catch {
     message.value = { type: 'error', text: 'Failed to load data' }
@@ -228,6 +237,57 @@ function removeScheduleEvent(id: number) {
   scheduleData.value = scheduleData.value.filter(e => e.id !== id)
 }
 
+// Bookings functions
+const sortedBookings = computed(() => {
+  return [...bookingsData.value].sort((a, b) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+})
+
+function toggleBooking(id: string) {
+  expandedBookingId.value = expandedBookingId.value === id ? null : id
+}
+
+async function updateBookingStatus(booking: BookingRequest, status: 'pending' | 'confirmed' | 'denied') {
+  loading.value = true
+  message.value = null
+  try {
+    const res = await fetch('/api/admin/bookings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': adminKey.value
+      },
+      body: JSON.stringify({
+        id: booking.id,
+        status,
+        adminNotes: booking.adminNotes
+      })
+    })
+
+    if (res.ok) {
+      booking.status = status
+      message.value = { type: 'success', text: 'Booking updated successfully' }
+    } else {
+      message.value = { type: 'error', text: 'Failed to update booking' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to update booking' }
+  } finally {
+    loading.value = false
+  }
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
 function logout() {
   isAuthenticated.value = false
   adminKey.value = ''
@@ -322,6 +382,23 @@ onMounted(() => {
             ]"
           >
             Schedule
+          </button>
+          <button
+            @click="activeTab = 'bookings'"
+            :class="[
+              'px-4 py-2 rounded-lg font-medium',
+              activeTab === 'bookings'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            ]"
+          >
+            Bookings
+            <span
+              v-if="bookingsData.filter(b => b.status === 'pending').length > 0"
+              class="ml-1 px-2 py-0.5 text-xs rounded-full bg-yellow-500 text-white"
+            >
+              {{ bookingsData.filter(b => b.status === 'pending').length }}
+            </span>
           </button>
         </div>
 
@@ -606,6 +683,144 @@ onMounted(() => {
           >
             {{ loading ? 'Saving...' : 'Save Schedule' }}
           </button>
+        </div>
+
+        <!-- Bookings Manager -->
+        <div v-if="activeTab === 'bookings'" class="space-y-4">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Booking Requests</h2>
+
+            <div v-if="sortedBookings.length === 0" class="text-neutral-500 text-center py-8">
+              No booking requests yet.
+            </div>
+
+            <div v-else class="space-y-3">
+              <div
+                v-for="booking in sortedBookings"
+                :key="booking.id"
+                class="border border-neutral-200 rounded-lg overflow-hidden"
+              >
+                <!-- Booking Header -->
+                <div
+                  @click="toggleBooking(booking.id)"
+                  class="p-4 cursor-pointer hover:bg-neutral-50 flex justify-between items-center"
+                >
+                  <div class="flex-1">
+                    <div class="flex items-center gap-3">
+                      <span
+                        :class="[
+                          'px-2 py-0.5 text-xs font-medium rounded-full',
+                          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          'bg-red-100 text-red-800'
+                        ]"
+                      >
+                        {{ booking.status }}
+                      </span>
+                      <span class="font-medium">{{ booking.name }}</span>
+                    </div>
+                    <p class="text-sm text-neutral-500 mt-1">
+                      {{ booking.eventType }} - {{ booking.eventDate }} at {{ booking.location }}
+                    </p>
+                  </div>
+                  <svg
+                    :class="['w-5 h-5 text-neutral-400 transition-transform', expandedBookingId === booking.id ? 'rotate-180' : '']"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+
+                <!-- Booking Details (Expanded) -->
+                <div v-if="expandedBookingId === booking.id" class="border-t border-neutral-200 p-4 bg-neutral-50">
+                  <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div>
+                      <p class="text-neutral-500">Email</p>
+                      <p class="font-medium">{{ booking.email }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Phone</p>
+                      <p class="font-medium">{{ booking.phone }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Event Date</p>
+                      <p class="font-medium">{{ booking.eventDate }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Event Time</p>
+                      <p class="font-medium">{{ booking.eventTime }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Location</p>
+                      <p class="font-medium">{{ booking.location }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Address</p>
+                      <p class="font-medium">{{ booking.address }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Event Type</p>
+                      <p class="font-medium">{{ booking.eventType }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Guest Count</p>
+                      <p class="font-medium">{{ booking.guestCount }}</p>
+                    </div>
+                    <div class="col-span-2">
+                      <p class="text-neutral-500">Submitted</p>
+                      <p class="font-medium">{{ formatDate(booking.createdAt) }}</p>
+                    </div>
+                  </div>
+
+                  <div v-if="booking.message" class="mb-4">
+                    <p class="text-neutral-500 text-sm">Additional Details</p>
+                    <p class="text-sm bg-white p-3 rounded border border-neutral-200 mt-1">{{ booking.message }}</p>
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="block">
+                      <span class="text-sm text-neutral-500">Admin Notes</span>
+                      <textarea
+                        v-model="booking.adminNotes"
+                        rows="2"
+                        class="mt-1 block w-full text-sm border border-neutral-300 rounded px-3 py-2 focus:border-neutral-400 focus:outline-none"
+                        placeholder="Internal notes about this booking..."
+                      ></textarea>
+                    </label>
+                  </div>
+
+                  <div class="flex gap-2">
+                    <button
+                      v-if="booking.status !== 'confirmed'"
+                      @click="updateBookingStatus(booking, 'confirmed')"
+                      :disabled="loading"
+                      class="flex-1 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      v-if="booking.status !== 'denied'"
+                      @click="updateBookingStatus(booking, 'denied')"
+                      :disabled="loading"
+                      class="flex-1 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      Deny
+                    </button>
+                    <button
+                      v-if="booking.status !== 'pending'"
+                      @click="updateBookingStatus(booking, 'pending')"
+                      :disabled="loading"
+                      class="flex-1 py-2 bg-neutral-600 text-white rounded hover:bg-neutral-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      Reset to Pending
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </main>

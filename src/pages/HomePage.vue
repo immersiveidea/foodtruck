@@ -20,6 +20,11 @@ import ScheduleSection from '../components/ScheduleSection.vue'
         <a href="#" class="hover:text-white transition-colors">Facebook</a>
         <a href="#" class="hover:text-white transition-colors">TikTok</a>
       </div>
+      <div class="mt-4">
+        <router-link to="/book" class="text-white hover:text-neutral-300 transition-colors font-medium">
+          Book Us for Your Event
+        </router-link>
+      </div>
     </footer>
   </div>
 </template>

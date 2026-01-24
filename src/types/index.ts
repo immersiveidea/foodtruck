@@ -26,3 +26,24 @@ export interface ScheduleLocation {
 }
 
 export type ScheduleData = ScheduleLocation[]
+
+export type BookingStatus = 'pending' | 'confirmed' | 'denied'
+
+export interface BookingRequest {
+  id: string
+  name: string
+  email: string
+  phone: string
+  eventDate: string
+  eventTime: string
+  location: string
+  address: string
+  eventType: string
+  guestCount: number
+  message?: string
+  status: BookingStatus
+  createdAt: string
+  adminNotes?: string
+}
+
+export type BookingsData = BookingRequest[]

@@ -19,6 +19,7 @@
           <a href="#about" class="hover:text-white/70 transition-colors">About</a>
           <a href="#menu" class="hover:text-white/70 transition-colors">Menu</a>
           <a href="#schedule" class="hover:text-white/70 transition-colors">Find Us</a>
+          <router-link to="/book" class="hover:text-white/70 transition-colors">Book Us</router-link>
         </div>
         <button class="md:hidden p-2" aria-label="Menu">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
