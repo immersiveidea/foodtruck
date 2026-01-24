@@ -1,0 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;600;700&family=Outfit:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: 'Oswald', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+  --font-accent: 'Bebas Neue', sans-serif;
+}

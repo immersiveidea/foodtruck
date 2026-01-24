@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "day": "Monday",
+    "date": "Jan 26",
+    "location": "Auraria Campus",
+    "address": "1201 5th St, Denver",
+    "time": "11am - 3pm",
+    "lat": 39.741855,
+    "lng": -105.009217
+  },
+  {
+    "id": 2,
+    "day": "Monday",
+    "date": "Feb 02",
+    "location": "Auraria Campus",
+    "address": "1201 5th St, Denver",
+    "time": "11am - 3pm",
+    "lat": 39.742009,
+    "lng": -105.009537
+  },
+  {
+    "id": 3,
+    "day": "Wednesday",
+    "date": "Feb 04",
+    "location": "JBS",
+    "address": "800 N 8th Ave, Greeley",
+    "time": "11am - 2pm",
+    "lat": 40.44395,
+    "lng": -104.691245
+  }
+]
