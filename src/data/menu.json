@@ -6,27 +6,33 @@
       "items": [
         {
           "name": "Triple Trouble Oolong",
-          "description": "A guaranteed explosion of textures and flavours with every sip! The Triple Trouble is our team's favourite Milk Tea with chewy tapioca pearls, delicate and light grass jelly and a satisfying vanilla pudding."
+          "description": "A guaranteed explosion of textures and flavours with every sip! The Triple Trouble is our team's favourite Milk Tea with chewy tapioca pearls, delicate and light grass jelly and a satisfying vanilla pudding.",
+          "price": 7.50
         },
         {
           "name": "Oolong Pure Tea",
-          "description": "Complex and bold like our Earl Grey Tea, yet light and floral like our Green Jasmine Tea. This unique tea is truly a hidden gem in our menu!"
+          "description": "Complex and bold like our Earl Grey Tea, yet light and floral like our Green Jasmine Tea. This unique tea is truly a hidden gem in our menu!",
+          "price": 5.50
         },
         {
           "name": "Oolong Milk Tea",
-          "description": "Low-key, this is our team's favourite Milk Tea. It offers a unique blend of the floral and light Green Jasmine Tea and a strong presence of the Earl Grey Tea."
+          "description": "Low-key, this is our team's favourite Milk Tea. It offers a unique blend of the floral and light Green Jasmine Tea and a strong presence of the Earl Grey Tea.",
+          "price": 6.00
         },
         {
           "name": "Oolong Espresso Milk Tea",
-          "description": "When bold meets bold. Our Oolong Milk Tea combined with Espresso is truly an elevated coffee with cream and sugar.. Or an elevated tea with milk!"
+          "description": "When bold meets bold. Our Oolong Milk Tea combined with Espresso is truly an elevated coffee with cream and sugar.. Or an elevated tea with milk!",
+          "price": 7.00
         },
         {
           "name": "Oolong Peach Tea",
-          "description": "Our unique version of the well-known Peach Ice Tea. You will love it!"
+          "description": "Our unique version of the well-known Peach Ice Tea. You will love it!",
+          "price": 6.00
         },
         {
           "name": "Oolong Lychee Tea",
-          "description": "Lychee, combined with a complex and unique tea. Definitely one of our team's favourite!"
+          "description": "Lychee, combined with a complex and unique tea. Definitely one of our team's favourite!",
+          "price": 6.00
         }
       ]
     },
@@ -36,35 +42,43 @@
       "items": [
         {
           "name": "Pure Tea",
-          "description": "Our signature, freshly brewed ORGANIC Green Jasmine Tea. Can be consumed hot or cold. Sweetened by default, please adjust sweetness level to your liking."
+          "description": "Our signature, freshly brewed ORGANIC Green Jasmine Tea. Can be consumed hot or cold. Sweetened by default, please adjust sweetness level to your liking.",
+          "price": 4.50
         },
         {
           "name": "Milk Teas",
-          "description": "Our signature, freshly brewed ORGANIC Earl Grey Tea with our own recipe of non-dairy creamer. Can be consumed hot or cold."
+          "description": "Our signature, freshly brewed ORGANIC Earl Grey Tea with our own recipe of non-dairy creamer. Can be consumed hot or cold.",
+          "price": 5.50
         },
         {
           "name": "Matcha Lattea",
-          "description": "Our YOYO! Matcha powder straight from Japan, combined with Soy milk. Perfect for every Matcha lover!"
+          "description": "Our YOYO! Matcha powder straight from Japan, combined with Soy milk. Perfect for every Matcha lover!",
+          "price": 6.50
         },
         {
           "name": "Matcha Lattea Espresso",
-          "description": "Our YOYO! Matcha powder straight from Japan, combined with Soy milk and a shot of Espresso. Bold flavours guaranteed!"
+          "description": "Our YOYO! Matcha powder straight from Japan, combined with Soy milk and a shot of Espresso. Bold flavours guaranteed!",
+          "price": 7.50
         },
         {
           "name": "Coconut Milk",
-          "description": "Our creamy Coconut milkshake is made with our own custom-made ingredients. The best Coconut milkshake you will ever have!"
+          "description": "Our creamy Coconut milkshake is made with our own custom-made ingredients. The best Coconut milkshake you will ever have!",
+          "price": 6.00
         },
         {
           "name": "Brown Sugar Milk Tea",
-          "description": "Our signature, freshly brewed ORGANIC Green Jasmine Tea with our own recipe of non-dairy creamer and brown sugar syrup."
+          "description": "Our signature, freshly brewed ORGANIC Green Jasmine Tea with our own recipe of non-dairy creamer and brown sugar syrup.",
+          "price": 6.50
         },
         {
           "name": "Taro Coconut Milk",
-          "description": "BESTSELLER: A creamy and sweet milkshake of Coconut milk, Taro (purple coloured sweet potato with a sweet vanilla and cookies flavour) and our unique creamer."
+          "description": "BESTSELLER: A creamy and sweet milkshake of Coconut milk, Taro (purple coloured sweet potato with a sweet vanilla and cookies flavour) and our unique creamer.",
+          "price": 7.00
         },
         {
           "name": "Taro Milk Tea",
-          "description": "Our signature, freshly brewed ORGANIC Earl Grey Tea with our own recipe of non-dairy creamer and Taro."
+          "description": "Our signature, freshly brewed ORGANIC Earl Grey Tea with our own recipe of non-dairy creamer and Taro.",
+          "price": 6.50
         }
       ]
     },
@@ -74,27 +88,33 @@
       "items": [
         {
           "name": "Peach Soda & Yakult",
-          "description": "Our favourite! Freshly brewed ORGANIC Green Jasmine iced tea with Peach syrup, fresh Lemon wheels, probiotic drink Yakult Plus and topped with sparkling water."
+          "description": "Our favourite! Freshly brewed ORGANIC Green Jasmine iced tea with Peach syrup, fresh Lemon wheels, probiotic drink Yakult Plus and topped with sparkling water.",
+          "price": 7.00
         },
         {
           "name": "Orange Blend",
-          "description": "REFRESHING ICED TEA ALERT! Fresh Orange Juice with Watermelon syrup and our freshly brewed ORGANIC Green Jasmine Tea."
+          "description": "REFRESHING ICED TEA ALERT! Fresh Orange Juice with Watermelon syrup and our freshly brewed ORGANIC Green Jasmine Tea.",
+          "price": 6.50
         },
         {
           "name": "Honey Mint",
-          "description": "Classic iced tea with great quality honey, freshly brewed ORGANIC Green Jasmine tea, fresh mint leaves and fresh lime."
+          "description": "Classic iced tea with great quality honey, freshly brewed ORGANIC Green Jasmine tea, fresh mint leaves and fresh lime.",
+          "price": 6.00
         },
         {
           "name": "Green Tea & Yakult",
-          "description": "A very unique refreshing and creamy iced tea: freshly brewed ORGANIC Green Jasmine Tea with probiotic drink Yakult Plus and fresh lime."
+          "description": "A very unique refreshing and creamy iced tea: freshly brewed ORGANIC Green Jasmine Tea with probiotic drink Yakult Plus and fresh lime.",
+          "price": 6.50
         },
         {
           "name": "Strawberry Mint",
-          "description": "BESTSELLER! This sweet iced tea is made with our ORGANIC Green Jasmine Tea, strawberry syrup, fresh mint leaves and fresh lime."
+          "description": "BESTSELLER! This sweet iced tea is made with our ORGANIC Green Jasmine Tea, strawberry syrup, fresh mint leaves and fresh lime.",
+          "price": 6.00
         },
         {
           "name": "Hong Kong Lemon Tea",
-          "description": "Our ORGANIC Earl Grey Tea with fresh lemons and a touch of sugar makes a perfectly refreshing iced tea!"
+          "description": "Our ORGANIC Earl Grey Tea with fresh lemons and a touch of sugar makes a perfectly refreshing iced tea!",
+          "price": 5.50
         }
       ]
     },
@@ -104,27 +124,33 @@
       "items": [
         {
           "name": "Lychee",
-          "description": "Our ORGANIC Green Jasmine iced tea with a sweet Lychee fruit flavour."
+          "description": "Our ORGANIC Green Jasmine iced tea with a sweet Lychee fruit flavour.",
+          "price": 5.50
         },
         {
           "name": "Strawberry",
-          "description": "Our ORGANIC Green Jasmine iced tea with a sweet Strawberry flavour."
+          "description": "Our ORGANIC Green Jasmine iced tea with a sweet Strawberry flavour.",
+          "price": 5.50
         },
         {
           "name": "Lemon",
-          "description": "Our ORGANIC Green Jasmine iced tea with a refreshing Lemon flavour."
+          "description": "Our ORGANIC Green Jasmine iced tea with a refreshing Lemon flavour.",
+          "price": 5.50
         },
         {
           "name": "Honeydew Melon",
-          "description": "Our ORGANIC Green Jasmine iced tea with a sweet Honeydew Melon flavour."
+          "description": "Our ORGANIC Green Jasmine iced tea with a sweet Honeydew Melon flavour.",
+          "price": 5.50
         },
         {
           "name": "Mango",
-          "description": "Our ORGANIC Green Jasmine iced tea with a sweet and unforgettable Mango flavour."
+          "description": "Our ORGANIC Green Jasmine iced tea with a sweet and unforgettable Mango flavour.",
+          "price": 5.50
         },
         {
           "name": "Passionfruit",
-          "description": "Our ORGANIC Green Jasmine iced tea with a sweet Passionfruit pulp and Passionfruit seeds."
+          "description": "Our ORGANIC Green Jasmine iced tea with a sweet Passionfruit pulp and Passionfruit seeds.",
+          "price": 5.50
         }
       ]
     },
@@ -134,35 +160,43 @@
       "items": [
         {
           "name": "Matcha Strawberry",
-          "description": "Matcha Meets Strawberry! Earthy matcha and sweet strawberries swirl into one creamy, dreamy iced drink."
+          "description": "Matcha Meets Strawberry! Earthy matcha and sweet strawberries swirl into one creamy, dreamy iced drink.",
+          "price": 7.50
         },
         {
           "name": "Matcha Mango",
-          "description": "A vibrant blend of earthy Japanese matcha and sweet tropical mango, shaken to perfection with your choice of milk."
+          "description": "A vibrant blend of earthy Japanese matcha and sweet tropical mango, shaken to perfection with your choice of milk.",
+          "price": 7.50
         },
         {
           "name": "Black Sesame Chocolate Milk Tea",
-          "description": "Our aromatic Green Jasmine Tea with rich cocoa and milk, married with a toasty black sesame wave of flavours."
+          "description": "Our aromatic Green Jasmine Tea with rich cocoa and milk, married with a toasty black sesame wave of flavours.",
+          "price": 7.00
         },
         {
           "name": "Rose Coconut Milk Tea",
-          "description": "Spread the love with our Rose Coconut Milk Tea! Infused with a hint of rose, it is the coconut milk tea reinvented!"
+          "description": "Spread the love with our Rose Coconut Milk Tea! Infused with a hint of rose, it is the coconut milk tea reinvented!",
+          "price": 7.00
         },
         {
           "name": "Chocolate Milk Tea",
-          "description": "Our aromatic Green Jasmine Tea with rich cocoa and milk. Smooth, rich and satisfying!"
+          "description": "Our aromatic Green Jasmine Tea with rich cocoa and milk. Smooth, rich and satisfying!",
+          "price": 6.50
         },
         {
           "name": "Pumpkin Spice Espresso Milk Tea",
-          "description": "Heartwarming and soothing, a must drink in the cold season of the year!"
+          "description": "Heartwarming and soothing, a must drink in the cold season of the year!",
+          "price": 7.50
         },
         {
           "name": "Lychee Sunset",
-          "description": "A very refreshing and easy to like drink for everyone. Based on a nutty Oolong Tea combined with sweet Lychees and balanced with Lemons and Mandarins."
+          "description": "A very refreshing and easy to like drink for everyone. Based on a nutty Oolong Tea combined with sweet Lychees and balanced with Lemons and Mandarins.",
+          "price": 6.50
         },
         {
           "name": "The Special Coconut",
-          "description": "It's so special, it's just like an Asian dessert! Our own Coconut milkshake combined with aromatic Pandan flavours."
+          "description": "It's so special, it's just like an Asian dessert! Our own Coconut milkshake combined with aromatic Pandan flavours.",
+          "price": 7.00
         }
       ]
     },
@@ -172,27 +206,33 @@
       "items": [
         {
           "name": "The Special Coconut Cookie",
-          "description": "Fragrant pandan and creamy coconut come together in our cookie."
+          "description": "Fragrant pandan and creamy coconut come together in our cookie.",
+          "price": 4.00
         },
         {
           "name": "Matcha Strawberry Cookie",
-          "description": "Earthy Japanese matcha and sweet strawberry jam."
+          "description": "Earthy Japanese matcha and sweet strawberry jam.",
+          "price": 4.00
         },
         {
           "name": "Ube Cookie",
-          "description": "Ube (purple yam) cookie packed with ube, premium white chocolate, shredded coconut flakes and bits of macadamia nuts."
+          "description": "Ube (purple yam) cookie packed with ube, premium white chocolate, shredded coconut flakes and bits of macadamia nuts.",
+          "price": 4.50
         },
         {
           "name": "Matcha White Choco Cookie",
-          "description": "Organic high quality matcha (green tea) crunchy soft cookie filled with white premium chocolate."
+          "description": "Organic high quality matcha (green tea) crunchy soft cookie filled with white premium chocolate.",
+          "price": 4.00
         },
         {
           "name": "Kinder Bueno Cookie",
-          "description": "A big vanilla cookie with a creamy hazelnut filling, premium milk chocolate and topped with a Kinder Bueno wafer."
+          "description": "A big vanilla cookie with a creamy hazelnut filling, premium milk chocolate and topped with a Kinder Bueno wafer.",
+          "price": 5.00
         },
         {
           "name": "Birthday Cookie",
-          "description": "Vanilla cookie, premium white chocolate callets and celebration sprinkles!"
+          "description": "Vanilla cookie, premium white chocolate callets and celebration sprinkles!",
+          "price": 4.00
         }
       ]
     }

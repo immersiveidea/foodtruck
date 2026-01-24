@@ -50,8 +50,11 @@ const activeItems = computed(() => {
           :key="item.name"
           class="bg-white rounded-lg p-5 shadow-sm border border-neutral-100"
         >
-          <h3 class="font-display text-lg font-semibold text-neutral-900 mb-2">{{ item.name }}</h3>
-          <p class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="font-display text-lg font-semibold text-neutral-900">{{ item.name }}</h3>
+            <span class="font-display text-lg font-semibold text-neutral-900">${{ item.price.toFixed(2) }}</span>
+          </div>
+          <p v-if="item.description" class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
         </div>
       </div>
 

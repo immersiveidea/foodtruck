@@ -141,13 +141,57 @@ function addMenuItem() {
   if (!selectedCategory.value) return
   selectedCategory.value.items.push({
     name: 'New Item',
-    description: 'Item description'
+    description: '',
+    price: 0
   })
 }
 
 function removeMenuItem(index: number) {
   if (!selectedCategory.value) return
   selectedCategory.value.items.splice(index, 1)
+}
+
+function exportMenu() {
+  const json = JSON.stringify(menuData.value, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'menu.json'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+const fileInput = ref<HTMLInputElement | null>(null)
+
+function triggerImport() {
+  fileInput.value?.click()
+}
+
+function importMenu(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target?.result as string)
+      if (data.categories && Array.isArray(data.categories)) {
+        menuData.value = data
+        if (menuData.value.categories.length > 0) {
+          selectedCategoryId.value = menuData.value.categories[0]!.id
+        }
+        message.value = { type: 'success', text: 'Menu imported successfully. Click "Save Menu" to persist changes.' }
+      } else {
+        message.value = { type: 'error', text: 'Invalid menu format. Expected { categories: [...] }' }
+      }
+    } catch {
+      message.value = { type: 'error', text: 'Failed to parse JSON file' }
+    }
+  }
+  reader.readAsText(file)
+  input.value = ''
 }
 
 function addScheduleEvent() {
@@ -283,6 +327,32 @@ onMounted(() => {
 
         <!-- Menu Editor -->
         <div v-if="activeTab === 'menu'" class="space-y-6">
+          <!-- Import/Export -->
+          <div class="bg-white rounded-lg shadow p-4 flex justify-between items-center">
+            <span class="text-sm text-neutral-600">Bulk update menu via JSON file</span>
+            <div class="flex gap-2">
+              <button
+                @click="exportMenu"
+                class="text-sm border border-neutral-300 text-neutral-700 px-3 py-1 rounded hover:bg-neutral-50"
+              >
+                Export JSON
+              </button>
+              <button
+                @click="triggerImport"
+                class="text-sm border border-neutral-300 text-neutral-700 px-3 py-1 rounded hover:bg-neutral-50"
+              >
+                Import JSON
+              </button>
+              <input
+                ref="fileInput"
+                type="file"
+                accept=".json,application/json"
+                class="hidden"
+                @change="importMenu"
+              />
+            </div>
+          </div>
+
           <div class="bg-white rounded-lg shadow p-6">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-semibold">Categories</h2>
@@ -342,21 +412,32 @@ onMounted(() => {
                 <div class="flex justify-between items-start mb-2">
                   <input
                     v-model="item.name"
-                    class="font-medium border-b border-transparent focus:border-neutral-300 focus:outline-none"
+                    class="font-medium border-b border-transparent focus:border-neutral-300 focus:outline-none flex-1"
                     placeholder="Item name"
                   />
-                  <button
-                    @click="removeMenuItem(index)"
-                    class="text-red-600 hover:text-red-700 text-sm"
-                  >
-                    Remove
-                  </button>
+                  <div class="flex items-center gap-2 ml-4">
+                    <span class="text-neutral-500">$</span>
+                    <input
+                      v-model.number="item.price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      class="w-20 font-medium border border-neutral-200 rounded px-2 py-1 focus:border-neutral-400 focus:outline-none"
+                      placeholder="0.00"
+                    />
+                    <button
+                      @click="removeMenuItem(index)"
+                      class="text-red-600 hover:text-red-700 text-sm ml-2"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
                 <textarea
                   v-model="item.description"
                   rows="2"
                   class="w-full text-sm text-neutral-600 border border-neutral-200 rounded px-2 py-1 focus:border-neutral-400 focus:outline-none"
-                  placeholder="Item description"
+                  placeholder="Item description (optional)"
                 ></textarea>
               </div>
             </div>
