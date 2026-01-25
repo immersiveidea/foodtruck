@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import imageCompression from 'browser-image-compression'
 import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem } from '../types'
+import AddressAutocomplete from '../components/AddressAutocomplete.vue'
+import type { AddressSuggestion } from '../composables/useAddressSearch'
 
 const adminKey = ref(localStorage.getItem('adminKey') || '')
 const uploadingItemIndex = ref<number | null>(null)
@@ -498,16 +500,46 @@ function importMenu(event: Event) {
 
 function addScheduleEvent() {
   const newId = Math.max(0, ...scheduleData.value.map(e => e.id)) + 1
+  // Default to tomorrow's date
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const defaultDate = tomorrow.toISOString().split('T')[0]
+
   editingEvent.value = {
     id: newId,
-    day: 'Monday',
-    date: '',
+    date: defaultDate!,
+    startTime: '11:00',
+    endTime: '15:00',
     location: '',
     address: '',
-    time: '11am - 3pm',
     lat: 40.48,
-    lng: -104.90
+    lng: -104.90,
+    duration: ''
   }
+}
+
+function formatDayOfWeek(dateStr: string): string {
+  if (!dateStr) return ''
+  const date = new Date(dateStr + 'T00:00:00')
+  return date.toLocaleDateString('en-US', { weekday: 'long' })
+}
+
+function formatDisplayDate(dateStr: string): string {
+  if (!dateStr) return ''
+  const date = new Date(dateStr + 'T00:00:00')
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function formatTimeRange(startTime: string, endTime: string): string {
+  const formatTime = (time: string) => {
+    if (!time) return ''
+    const [hours, minutes] = time.split(':')
+    const h = parseInt(hours!, 10)
+    const suffix = h >= 12 ? 'pm' : 'am'
+    const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h
+    return minutes === '00' ? `${displayHour}${suffix}` : `${displayHour}:${minutes}${suffix}`
+  }
+  return `${formatTime(startTime)} - ${formatTime(endTime)}`
 }
 
 function saveScheduleEvent() {
@@ -520,6 +552,13 @@ function saveScheduleEvent() {
     scheduleData.value.push(editingEvent.value)
   }
   editingEvent.value = null
+}
+
+function onAddressSelect(suggestion: AddressSuggestion) {
+  if (!editingEvent.value) return
+  // Auto-fill lat/lng from the selected address
+  editingEvent.value.lat = parseFloat(suggestion.lat)
+  editingEvent.value.lng = parseFloat(suggestion.lon)
 }
 
 function editScheduleEvent(event: ScheduleLocation) {
@@ -925,31 +964,46 @@ onMounted(() => {
                 </h3>
 
                 <div class="space-y-4">
+                  <label class="block">
+                    <span class="text-sm text-neutral-600">Date</span>
+                    <input
+                      v-model="editingEvent.date"
+                      type="date"
+                      class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2"
+                    />
+                    <span v-if="editingEvent.date" class="text-xs text-neutral-400 mt-1">
+                      {{ formatDayOfWeek(editingEvent.date) }}
+                    </span>
+                  </label>
+
                   <div class="grid grid-cols-2 gap-4">
                     <label class="block">
-                      <span class="text-sm text-neutral-600">Day</span>
-                      <select
-                        v-model="editingEvent.day"
+                      <span class="text-sm text-neutral-600">Start Time</span>
+                      <input
+                        v-model="editingEvent.startTime"
+                        type="time"
                         class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2"
-                      >
-                        <option>Monday</option>
-                        <option>Tuesday</option>
-                        <option>Wednesday</option>
-                        <option>Thursday</option>
-                        <option>Friday</option>
-                        <option>Saturday</option>
-                        <option>Sunday</option>
-                      </select>
+                      />
                     </label>
                     <label class="block">
-                      <span class="text-sm text-neutral-600">Date</span>
+                      <span class="text-sm text-neutral-600">End Time</span>
                       <input
-                        v-model="editingEvent.date"
+                        v-model="editingEvent.endTime"
+                        type="time"
                         class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2"
-                        placeholder="Jan 26"
                       />
                     </label>
                   </div>
+
+                  <label class="block">
+                    <span class="text-sm text-neutral-600">Duration (optional)</span>
+                    <input
+                      v-model="editingEvent.duration"
+                      class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2"
+                      placeholder="e.g., 4 hours"
+                    />
+                    <span class="text-xs text-neutral-400 mt-1">Descriptive duration for display</span>
+                  </label>
 
                   <label class="block">
                     <span class="text-sm text-neutral-600">Location Name</span>
@@ -960,23 +1014,17 @@ onMounted(() => {
                     />
                   </label>
 
-                  <label class="block">
+                  <div class="block">
                     <span class="text-sm text-neutral-600">Address</span>
-                    <input
-                      v-model="editingEvent.address"
-                      class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2"
-                      placeholder="1201 5th St, Denver"
-                    />
-                  </label>
-
-                  <label class="block">
-                    <span class="text-sm text-neutral-600">Time</span>
-                    <input
-                      v-model="editingEvent.time"
-                      class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2"
-                      placeholder="11am - 3pm"
-                    />
-                  </label>
+                    <div class="mt-1">
+                      <AddressAutocomplete
+                        v-model="editingEvent.address"
+                        placeholder="Start typing an address..."
+                        @select="onAddressSelect"
+                      />
+                    </div>
+                    <span class="text-xs text-neutral-400 mt-1">Latitude and longitude will auto-fill when you select an address</span>
+                  </div>
 
                   <div class="grid grid-cols-2 gap-4">
                     <label class="block">
@@ -1025,9 +1073,14 @@ onMounted(() => {
                 class="border border-neutral-200 rounded-lg p-4 flex justify-between items-center"
               >
                 <div>
-                  <p class="font-medium">{{ event.day }}, {{ event.date }}</p>
-                  <p class="text-sm text-neutral-500">{{ event.location }} - {{ event.time }}</p>
+                  <p class="font-medium">
+                    {{ event.startTime ? formatDayOfWeek(event.date) : event.day }}, {{ event.startTime ? formatDisplayDate(event.date) : event.date }}
+                  </p>
+                  <p class="text-sm text-neutral-500">
+                    {{ event.location }} - {{ event.startTime ? formatTimeRange(event.startTime, event.endTime) : event.time }}
+                  </p>
                   <p class="text-sm text-neutral-400">{{ event.address }}</p>
+                  <p v-if="event.duration" class="text-sm text-neutral-400">Duration: {{ event.duration }}</p>
                 </div>
                 <div class="flex gap-2">
                   <button

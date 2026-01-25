@@ -91,32 +91,36 @@ components:
       type: object
       required:
         - id
-        - day
         - date
+        - startTime
+        - endTime
         - location
         - address
-        - time
         - lat
         - lng
       properties:
         id:
           type: integer
           example: 1
-        day:
-          type: string
-          example: Saturday
         date:
           type: string
-          example: Jan 27
+          format: date
+          description: Event date in ISO format (YYYY-MM-DD)
+          example: "2024-01-27"
+        startTime:
+          type: string
+          description: Start time in 24-hour format (HH:MM)
+          example: "11:00"
+        endTime:
+          type: string
+          description: End time in 24-hour format (HH:MM)
+          example: "15:00"
         location:
           type: string
           example: Windsor Farmers Market
         address:
           type: string
           example: 123 Main St, Windsor, CO
-        time:
-          type: string
-          example: 9:00 AM - 1:00 PM
         lat:
           type: number
           format: float
@@ -125,6 +129,18 @@ components:
           type: number
           format: float
           example: -104.90
+        duration:
+          type: string
+          description: Optional descriptive duration (e.g., "4 hours")
+          example: "4 hours"
+        day:
+          type: string
+          description: "Deprecated: Day of week is now computed from date"
+          example: Saturday
+        time:
+          type: string
+          description: "Deprecated: Use startTime and endTime instead"
+          example: 11am - 3pm
 
     ScheduleData:
       type: array

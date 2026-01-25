@@ -22,6 +22,35 @@ const mapSrc = computed(() => {
   const { lat, lng } = selectedLocation.value
   return `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01},${lat - 0.01},${lng + 0.01},${lat + 0.01}&layer=mapnik&marker=${lat},${lng}`
 })
+
+// Format helpers for new date/time fields (with backward compatibility)
+function getDayOfWeek(loc: ScheduleLocation): string {
+  if (loc.day) return loc.day // Legacy format
+  if (!loc.date) return ''
+  const date = new Date(loc.date + 'T00:00:00')
+  return date.toLocaleDateString('en-US', { weekday: 'long' })
+}
+
+function getDisplayDate(loc: ScheduleLocation): string {
+  if (!loc.startTime && loc.date) return loc.date // Legacy format (already formatted)
+  if (!loc.date) return ''
+  const date = new Date(loc.date + 'T00:00:00')
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function getTimeDisplay(loc: ScheduleLocation): string {
+  if (loc.time) return loc.time // Legacy format
+  if (!loc.startTime || !loc.endTime) return ''
+
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':')
+    const h = parseInt(hours!, 10)
+    const suffix = h >= 12 ? 'pm' : 'am'
+    const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h
+    return minutes === '00' ? `${displayHour}${suffix}` : `${displayHour}:${minutes}${suffix}`
+  }
+  return `${formatTime(loc.startTime)} - ${formatTime(loc.endTime)}`
+}
 </script>
 
 <template>
@@ -45,13 +74,13 @@ const mapSrc = computed(() => {
           >
             <div class="flex justify-between items-start">
               <div>
-                <p class="font-display font-semibold">{{ loc.day }}, {{ loc.date }}</p>
+                <p class="font-display font-semibold">{{ getDayOfWeek(loc) }}, {{ getDisplayDate(loc) }}</p>
                 <p :class="selectedLocation?.id === loc.id ? 'text-neutral-300' : 'text-neutral-500'" class="font-body text-sm">
                   {{ loc.location }}
                 </p>
               </div>
               <span :class="selectedLocation?.id === loc.id ? 'text-neutral-300' : 'text-neutral-600'" class="font-body text-sm font-medium">
-                {{ loc.time }}
+                {{ getTimeDisplay(loc) }}
               </span>
             </div>
           </button>
@@ -68,7 +97,8 @@ const mapSrc = computed(() => {
           <div class="p-4 border-t border-neutral-200">
             <h3 class="font-display font-semibold text-neutral-800">{{ selectedLocation.location }}</h3>
             <p class="font-body text-sm text-neutral-500">{{ selectedLocation.address }}</p>
-            <p class="font-body text-sm text-neutral-600 font-medium mt-1">{{ selectedLocation.day }} · {{ selectedLocation.time }}</p>
+            <p class="font-body text-sm text-neutral-600 font-medium mt-1">{{ getDayOfWeek(selectedLocation) }} · {{ getTimeDisplay(selectedLocation) }}</p>
+            <p v-if="selectedLocation.duration" class="font-body text-xs text-neutral-400 mt-1">{{ selectedLocation.duration }}</p>
           </div>
         </div>
       </div>

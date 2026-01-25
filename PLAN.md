@@ -1,6 +1,7 @@
 # Feature Roadmap
 - [x] Ability to update, change, and adjust hero background image (Site Management)
-- [ ] Change events, and scheduling admin pages to use a date picker and time picker for start times and time picker for end time for scheduling and events.
+- [x] Change events, and scheduling admin pages to use a date picker and time picker for start times and time picker for end time for scheduling and events.
+- [x] When adding events, add openmap integration to verify address and autofill lat and long
 - [ ] Ability to update title and meta tags (SEO)
 - [ ] Ability to generate sitemap for seo and crawlers (SEO)
 - [ ] Social sharing (Marketing)

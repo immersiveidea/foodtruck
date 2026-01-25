@@ -20,13 +20,17 @@ export interface MenuData {
 
 export interface ScheduleLocation {
   id: number
-  day: string
-  date: string
+  date: string           // ISO format YYYY-MM-DD
+  startTime: string      // 24-hour format HH:MM
+  endTime: string        // 24-hour format HH:MM
   location: string
   address: string
-  time: string
   lat: number
   lng: number
+  duration?: string      // Optional descriptive duration (e.g., "4 hours")
+  // Legacy fields for backward compatibility
+  day?: string           // Deprecated: computed from date
+  time?: string          // Deprecated: use startTime/endTime
 }
 
 export type ScheduleData = ScheduleLocation[]
