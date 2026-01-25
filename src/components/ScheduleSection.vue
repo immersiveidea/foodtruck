@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useSchedule } from '../composables/useSchedule'
+import { formatDayOfWeek, formatDisplayDate, formatTimeRange } from '../composables/useDateTimeFormat'
 import type { ScheduleLocation } from '../types'
 
 const { schedule } = useSchedule()
@@ -23,33 +24,29 @@ const mapSrc = computed(() => {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01},${lat - 0.01},${lng + 0.01},${lat + 0.01}&layer=mapnik&marker=${lat},${lng}`
 })
 
-// Format helpers for new date/time fields (with backward compatibility)
+// Format helpers with backward compatibility for legacy fields
 function getDayOfWeek(loc: ScheduleLocation): string {
-  if (loc.day) return loc.day // Legacy format
-  if (!loc.date) return ''
-  const date = new Date(loc.date + 'T00:00:00')
-  return date.toLocaleDateString('en-US', { weekday: 'long' })
+  // Prioritize computing from ISO date if startTime exists (new format)
+  if (loc.startTime && loc.date) {
+    return formatDayOfWeek(loc.date)
+  }
+  if (loc.day) return loc.day // Legacy fallback
+  return formatDayOfWeek(loc.date || '')
 }
 
 function getDisplayDate(loc: ScheduleLocation): string {
-  if (!loc.startTime && loc.date) return loc.date // Legacy format (already formatted)
-  if (!loc.date) return ''
-  const date = new Date(loc.date + 'T00:00:00')
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  // Prioritize computing from ISO date if startTime exists (new format)
+  if (loc.startTime && loc.date) {
+    return formatDisplayDate(loc.date)
+  }
+  if (loc.date && !loc.date.includes('-')) return loc.date // Legacy format (already formatted)
+  return formatDisplayDate(loc.date || '')
 }
 
 function getTimeDisplay(loc: ScheduleLocation): string {
   if (loc.time) return loc.time // Legacy format
   if (!loc.startTime || !loc.endTime) return ''
-
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':')
-    const h = parseInt(hours!, 10)
-    const suffix = h >= 12 ? 'pm' : 'am'
-    const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h
-    return minutes === '00' ? `${displayHour}${suffix}` : `${displayHour}:${minutes}${suffix}`
-  }
-  return `${formatTime(loc.startTime)} - ${formatTime(loc.endTime)}`
+  return formatTimeRange(loc.startTime, loc.endTime)
 }
 </script>
 

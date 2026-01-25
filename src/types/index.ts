@@ -43,7 +43,8 @@ export interface BookingRequest {
   email: string
   phone: string
   eventDate: string
-  eventTime: string
+  startTime: string        // 24-hour format HH:MM
+  endTime: string          // 24-hour format HH:MM
   location: string
   address: string
   eventType: string
@@ -52,6 +53,8 @@ export interface BookingRequest {
   status: BookingStatus
   createdAt: string
   adminNotes?: string
+  // Legacy field for backward compatibility
+  eventTime?: string       // Deprecated: use startTime/endTime
 }
 
 export type BookingsData = BookingRequest[]

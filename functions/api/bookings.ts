@@ -7,7 +7,8 @@ interface BookingSubmission {
   email: string
   phone: string
   eventDate: string
-  eventTime: string
+  startTime: string
+  endTime: string
   location: string
   address: string
   eventType: string
@@ -27,7 +28,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const body = await context.request.json() as BookingSubmission
 
     // Basic validation
-    const required = ['name', 'email', 'phone', 'eventDate', 'eventTime', 'location', 'address', 'eventType', 'guestCount'] as const
+    const required = ['name', 'email', 'phone', 'eventDate', 'startTime', 'endTime', 'location', 'address', 'eventType', 'guestCount'] as const
     for (const field of required) {
       if (!body[field]) {
         return Response.json({ success: false, error: `Missing required field: ${field}` }, { status: 400 })
@@ -54,7 +55,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       email: body.email,
       phone: body.phone,
       eventDate: body.eventDate,
-      eventTime: body.eventTime,
+      startTime: body.startTime,
+      endTime: body.endTime,
       location: body.location,
       address: body.address,
       eventType: body.eventType,

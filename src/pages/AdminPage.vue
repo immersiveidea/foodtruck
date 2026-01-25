@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import imageCompression from 'browser-image-compression'
+import JSZip from 'jszip'
 import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem } from '../types'
 import AddressAutocomplete from '../components/AddressAutocomplete.vue'
+import TimeRangePicker from '../components/TimeRangePicker.vue'
 import type { AddressSuggestion } from '../composables/useAddressSearch'
+import { formatDayOfWeek, formatDisplayDate, formatTimeRange, formatTimestamp } from '../composables/useDateTimeFormat'
 
 const adminKey = ref(localStorage.getItem('adminKey') || '')
 const uploadingItemIndex = ref<number | null>(null)
 const isAuthenticated = ref(false)
-const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'hero' | 'about'>('menu')
+const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'hero' | 'about' | 'backup'>('menu')
 const loading = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -33,6 +36,11 @@ const heroPreviewScale = ref(1)
 
 // About state
 const aboutData = ref<AboutContent>({ heading: '', paragraphs: [] })
+
+// Backup state
+const backupLoading = ref(false)
+const backupProgress = ref('')
+const restoreFile = ref<File | null>(null)
 
 // Preview state
 const previewItem = ref<MenuItem | null>(null)
@@ -518,29 +526,7 @@ function addScheduleEvent() {
   }
 }
 
-function formatDayOfWeek(dateStr: string): string {
-  if (!dateStr) return ''
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('en-US', { weekday: 'long' })
-}
-
-function formatDisplayDate(dateStr: string): string {
-  if (!dateStr) return ''
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function formatTimeRange(startTime: string, endTime: string): string {
-  const formatTime = (time: string) => {
-    if (!time) return ''
-    const [hours, minutes] = time.split(':')
-    const h = parseInt(hours!, 10)
-    const suffix = h >= 12 ? 'pm' : 'am'
-    const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h
-    return minutes === '00' ? `${displayHour}${suffix}` : `${displayHour}:${minutes}${suffix}`
-  }
-  return `${formatTime(startTime)} - ${formatTime(endTime)}`
-}
+// Date/time formatting functions imported from useDateTimeFormat composable
 
 function saveScheduleEvent() {
   if (!editingEvent.value) return
@@ -610,14 +596,159 @@ async function updateBookingStatus(booking: BookingRequest, status: 'pending' | 
   }
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+// formatTimestamp imported from useDateTimeFormat composable
+
+// Backup functions
+async function createBackup() {
+  backupLoading.value = true
+  backupProgress.value = 'Fetching content...'
+  message.value = null
+
+  try {
+    // Fetch backup data (content + image list)
+    const res = await fetch('/api/admin/backup', {
+      headers: { 'X-Admin-Key': adminKey.value }
+    })
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch backup data')
+    }
+
+    const backupData = await res.json()
+    const zip = new JSZip()
+
+    // Add content.json to zip
+    zip.file('content.json', JSON.stringify(backupData.content, null, 2))
+
+    // Download and add each image
+    const imageKeys: string[] = backupData.imageKeys || []
+    for (let i = 0; i < imageKeys.length; i++) {
+      const key = imageKeys[i]
+      backupProgress.value = `Downloading image ${i + 1}/${imageKeys.length}...`
+
+      try {
+        const imgRes = await fetch(`/api/images/${key}`)
+        if (imgRes.ok) {
+          const blob = await imgRes.blob()
+          zip.file(`images/${key}`, blob)
+        }
+      } catch (imgErr) {
+        console.warn(`Failed to download image ${key}:`, imgErr)
+      }
+    }
+
+    // Generate and download zip
+    backupProgress.value = 'Creating zip file...'
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+
+    const date = new Date().toISOString().split('T')[0]
+    const filename = `foodtruck-backup-${date}.zip`
+
+    const url = URL.createObjectURL(zipBlob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    message.value = { type: 'success', text: 'Backup downloaded successfully' }
+  } catch (error) {
+    console.error('Backup error:', error)
+    message.value = { type: 'error', text: 'Failed to create backup' }
+  } finally {
+    backupLoading.value = false
+    backupProgress.value = ''
+  }
+}
+
+function onRestoreFileSelect(event: Event) {
+  const input = event.target as HTMLInputElement
+  restoreFile.value = input.files?.[0] || null
+}
+
+async function restoreBackup() {
+  if (!restoreFile.value) {
+    message.value = { type: 'error', text: 'Please select a backup file' }
+    return
+  }
+
+  backupLoading.value = true
+  backupProgress.value = 'Reading backup file...'
+  message.value = null
+
+  try {
+    const zip = await JSZip.loadAsync(restoreFile.value)
+
+    // Read content.json
+    const contentFile = zip.file('content.json')
+    if (!contentFile) {
+      throw new Error('Invalid backup: content.json not found')
+    }
+
+    const contentJson = await contentFile.async('string')
+    const content = JSON.parse(contentJson)
+
+    // Restore content via API
+    backupProgress.value = 'Restoring content...'
+    const contentRes = await fetch('/api/admin/restore', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': adminKey.value
+      },
+      body: JSON.stringify({ content, clearExistingImages: true })
+    })
+
+    if (!contentRes.ok) {
+      throw new Error('Failed to restore content')
+    }
+
+    // Restore images
+    const imagesFolder = zip.folder('images')
+    if (imagesFolder) {
+      const imageFiles: { key: string; file: JSZip.JSZipObject }[] = []
+      imagesFolder.forEach((relativePath, file) => {
+        if (!file.dir) {
+          imageFiles.push({ key: relativePath, file })
+        }
+      })
+
+      for (let i = 0; i < imageFiles.length; i++) {
+        const { key, file } = imageFiles[i]!
+        backupProgress.value = `Restoring image ${i + 1}/${imageFiles.length}...`
+
+        try {
+          const blob = await file.async('blob')
+          const formData = new FormData()
+          formData.append('file', blob, key.split('/').pop() || 'image')
+          formData.append('key', key)
+
+          await fetch('/api/admin/restore-image', {
+            method: 'POST',
+            headers: { 'X-Admin-Key': adminKey.value },
+            body: formData
+          })
+        } catch (imgErr) {
+          console.warn(`Failed to restore image ${key}:`, imgErr)
+        }
+      }
+    }
+
+    // Reload all data
+    backupProgress.value = 'Reloading data...'
+    await loadData()
+
+    message.value = { type: 'success', text: 'Backup restored successfully' }
+    restoreFile.value = null
+  } catch (error) {
+    console.error('Restore error:', error)
+    message.value = { type: 'error', text: `Failed to restore backup: ${error instanceof Error ? error.message : 'Unknown error'}` }
+  } finally {
+    backupLoading.value = false
+    backupProgress.value = ''
+  }
 }
 
 function logout() {
@@ -753,6 +884,17 @@ onMounted(() => {
             ]"
           >
             About
+          </button>
+          <button
+            @click="activeTab = 'backup'"
+            :class="[
+              'px-4 py-2 rounded-lg font-medium',
+              activeTab === 'backup'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            ]"
+          >
+            Backup
           </button>
         </div>
 
@@ -976,24 +1118,10 @@ onMounted(() => {
                     </span>
                   </label>
 
-                  <div class="grid grid-cols-2 gap-4">
-                    <label class="block">
-                      <span class="text-sm text-neutral-600">Start Time</span>
-                      <input
-                        v-model="editingEvent.startTime"
-                        type="time"
-                        class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2"
-                      />
-                    </label>
-                    <label class="block">
-                      <span class="text-sm text-neutral-600">End Time</span>
-                      <input
-                        v-model="editingEvent.endTime"
-                        type="time"
-                        class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2"
-                      />
-                    </label>
-                  </div>
+                  <TimeRangePicker
+                    v-model:start-time="editingEvent.startTime"
+                    v-model:end-time="editingEvent.endTime"
+                  />
 
                   <label class="block">
                     <span class="text-sm text-neutral-600">Duration (optional)</span>
@@ -1174,11 +1302,11 @@ onMounted(() => {
                     </div>
                     <div>
                       <p class="text-neutral-500">Event Date</p>
-                      <p class="font-medium">{{ booking.eventDate }}</p>
+                      <p class="font-medium">{{ formatDayOfWeek(booking.eventDate) }}, {{ formatDisplayDate(booking.eventDate) }}</p>
                     </div>
                     <div>
                       <p class="text-neutral-500">Event Time</p>
-                      <p class="font-medium">{{ booking.eventTime }}</p>
+                      <p class="font-medium">{{ booking.startTime ? formatTimeRange(booking.startTime, booking.endTime) : booking.eventTime }}</p>
                     </div>
                     <div>
                       <p class="text-neutral-500">Location</p>
@@ -1198,7 +1326,7 @@ onMounted(() => {
                     </div>
                     <div class="col-span-2">
                       <p class="text-neutral-500">Submitted</p>
-                      <p class="font-medium">{{ formatDate(booking.createdAt) }}</p>
+                      <p class="font-medium">{{ formatTimestamp(booking.createdAt) }}</p>
                     </div>
                   </div>
 
@@ -1434,6 +1562,70 @@ onMounted(() => {
           >
             {{ loading ? 'Saving...' : 'Save About' }}
           </button>
+        </div>
+
+        <!-- Backup & Restore -->
+        <div v-if="activeTab === 'backup'" class="space-y-6">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Backup & Restore</h2>
+            <p class="text-sm text-neutral-500 mb-6">Download a complete backup of your site content and images, or restore from a previous backup.</p>
+
+            <!-- Progress indicator -->
+            <div v-if="backupProgress" class="mb-6 p-4 bg-blue-50 text-blue-800 rounded-lg">
+              <div class="flex items-center gap-3">
+                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>{{ backupProgress }}</span>
+              </div>
+            </div>
+
+            <!-- Backup Section -->
+            <div class="border-b border-neutral-200 pb-6 mb-6">
+              <h3 class="font-medium mb-2">Download Backup</h3>
+              <p class="text-sm text-neutral-500 mb-4">
+                Creates a ZIP file containing all your content (menu, schedule, bookings, hero, about) and images.
+              </p>
+              <button
+                @click="createBackup"
+                :disabled="backupLoading"
+                class="bg-neutral-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50"
+              >
+                {{ backupLoading ? 'Creating Backup...' : 'Download Backup' }}
+              </button>
+            </div>
+
+            <!-- Restore Section -->
+            <div>
+              <h3 class="font-medium mb-2">Restore from Backup</h3>
+              <p class="text-sm text-neutral-500 mb-4">
+                Upload a previously downloaded backup ZIP file to restore your site.
+                <span class="text-red-600 font-medium">Warning: This will overwrite all existing content and images.</span>
+              </p>
+
+              <div class="space-y-4">
+                <label class="block">
+                  <span class="text-sm text-neutral-600">Select Backup File</span>
+                  <input
+                    type="file"
+                    accept=".zip"
+                    @change="onRestoreFileSelect"
+                    class="mt-1 block w-full text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200"
+                  />
+                </label>
+
+                <button
+                  v-if="restoreFile"
+                  @click="restoreBackup"
+                  :disabled="backupLoading"
+                  class="bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
+                >
+                  {{ backupLoading ? 'Restoring...' : 'Restore Backup' }}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </main>

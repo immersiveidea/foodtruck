@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import AddressAutocomplete from '../components/AddressAutocomplete.vue'
+import TimeRangePicker from '../components/TimeRangePicker.vue'
 import type { AddressSuggestion } from '../composables/useAddressSearch'
 
 const form = reactive({
@@ -8,7 +9,8 @@ const form = reactive({
   email: '',
   phone: '',
   eventDate: '',
-  eventTime: '',
+  startTime: '',
+  endTime: '',
   location: '',
   address: '',
   lat: null as number | null,
@@ -146,28 +148,21 @@ async function submitForm() {
           <div class="space-y-4">
             <h2 class="font-semibold text-neutral-900">Event Details</h2>
 
-            <div class="grid grid-cols-2 gap-4">
-              <label class="block">
-                <span class="text-sm text-neutral-600">Event Date <span class="text-red-500">*</span></span>
-                <input
-                  v-model="form.eventDate"
-                  type="date"
-                  required
-                  class="mt-1 block w-full rounded-lg border border-neutral-300 px-4 py-2 focus:border-neutral-500 focus:outline-none"
-                />
-              </label>
+            <label class="block">
+              <span class="text-sm text-neutral-600">Event Date <span class="text-red-500">*</span></span>
+              <input
+                v-model="form.eventDate"
+                type="date"
+                required
+                class="mt-1 block w-full rounded-lg border border-neutral-300 px-4 py-2 focus:border-neutral-500 focus:outline-none"
+              />
+            </label>
 
-              <label class="block">
-                <span class="text-sm text-neutral-600">Event Time <span class="text-red-500">*</span></span>
-                <input
-                  v-model="form.eventTime"
-                  type="text"
-                  required
-                  class="mt-1 block w-full rounded-lg border border-neutral-300 px-4 py-2 focus:border-neutral-500 focus:outline-none"
-                  placeholder="2pm - 6pm"
-                />
-              </label>
-            </div>
+            <TimeRangePicker
+              v-model:start-time="form.startTime"
+              v-model:end-time="form.endTime"
+              :required="true"
+            />
 
             <label class="block">
               <span class="text-sm text-neutral-600">Location Name <span class="text-red-500">*</span></span>
