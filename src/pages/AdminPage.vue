@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData } from '../types'
+import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent } from '../types'
 
 const adminKey = ref(localStorage.getItem('adminKey') || '')
 const isAuthenticated = ref(false)
-const activeTab = ref<'menu' | 'schedule' | 'bookings'>('menu')
+const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'hero' | 'about'>('menu')
 const loading = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -19,6 +19,12 @@ const editingEvent = ref<ScheduleLocation | null>(null)
 // Bookings state
 const bookingsData = ref<BookingsData>([])
 const expandedBookingId = ref<string | null>(null)
+
+// Hero state
+const heroData = ref<HeroContent>({ title: '', tagline: '', ctaText: '', ctaLink: '' })
+
+// About state
+const aboutData = ref<AboutContent>({ heading: '', paragraphs: [] })
 
 const selectedCategory = computed(() =>
   menuData.value.categories.find(c => c.id === selectedCategoryId.value)
@@ -51,10 +57,12 @@ async function authenticate() {
 async function loadData() {
   loading.value = true
   try {
-    const [menuRes, scheduleRes, bookingsRes] = await Promise.all([
+    const [menuRes, scheduleRes, bookingsRes, heroRes, aboutRes] = await Promise.all([
       fetch('/api/admin/menu', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/schedule', { headers: { 'X-Admin-Key': adminKey.value } }),
-      fetch('/api/admin/bookings', { headers: { 'X-Admin-Key': adminKey.value } })
+      fetch('/api/admin/bookings', { headers: { 'X-Admin-Key': adminKey.value } }),
+      fetch('/api/admin/hero', { headers: { 'X-Admin-Key': adminKey.value } }),
+      fetch('/api/admin/about', { headers: { 'X-Admin-Key': adminKey.value } })
     ])
 
     if (menuRes.ok) {
@@ -71,6 +79,20 @@ async function loadData() {
 
     if (bookingsRes.ok) {
       bookingsData.value = await bookingsRes.json()
+    }
+
+    if (heroRes.ok) {
+      const data = await heroRes.json()
+      if (data.title) {
+        heroData.value = data
+      }
+    }
+
+    if (aboutRes.ok) {
+      const data = await aboutRes.json()
+      if (data.heading) {
+        aboutData.value = data
+      }
     }
   } catch {
     message.value = { type: 'error', text: 'Failed to load data' }
@@ -127,6 +149,64 @@ async function saveSchedule() {
   } finally {
     loading.value = false
   }
+}
+
+async function saveHero() {
+  loading.value = true
+  message.value = null
+  try {
+    const res = await fetch('/api/admin/hero', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': adminKey.value
+      },
+      body: JSON.stringify(heroData.value)
+    })
+
+    if (res.ok) {
+      message.value = { type: 'success', text: 'Hero content saved successfully' }
+    } else {
+      message.value = { type: 'error', text: 'Failed to save hero content' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to save hero content' }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function saveAbout() {
+  loading.value = true
+  message.value = null
+  try {
+    const res = await fetch('/api/admin/about', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': adminKey.value
+      },
+      body: JSON.stringify(aboutData.value)
+    })
+
+    if (res.ok) {
+      message.value = { type: 'success', text: 'About content saved successfully' }
+    } else {
+      message.value = { type: 'error', text: 'Failed to save about content' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to save about content' }
+  } finally {
+    loading.value = false
+  }
+}
+
+function addParagraph() {
+  aboutData.value.paragraphs.push('')
+}
+
+function removeParagraph(index: number) {
+  aboutData.value.paragraphs.splice(index, 1)
 }
 
 function addCategory() {
@@ -399,6 +479,28 @@ onMounted(() => {
             >
               {{ bookingsData.filter(b => b.status === 'pending').length }}
             </span>
+          </button>
+          <button
+            @click="activeTab = 'hero'"
+            :class="[
+              'px-4 py-2 rounded-lg font-medium',
+              activeTab === 'hero'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            ]"
+          >
+            Hero
+          </button>
+          <button
+            @click="activeTab = 'about'"
+            :class="[
+              'px-4 py-2 rounded-lg font-medium',
+              activeTab === 'about'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            ]"
+          >
+            About
           </button>
         </div>
 
@@ -821,6 +923,130 @@ onMounted(() => {
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Hero Editor -->
+        <div v-if="activeTab === 'hero'" class="space-y-6">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Hero Section</h2>
+            <p class="text-sm text-neutral-500 mb-6">Edit the hero banner content that appears at the top of the homepage.</p>
+
+            <div class="space-y-4">
+              <label class="block">
+                <span class="text-sm text-neutral-600">Title</span>
+                <input
+                  v-model="heroData.title"
+                  class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none"
+                  placeholder="YoYo Bubble Tea"
+                />
+                <span class="text-xs text-neutral-400 mt-1">Appears in the navigation bar and hero banner</span>
+              </label>
+
+              <label class="block">
+                <span class="text-sm text-neutral-600">Tagline</span>
+                <textarea
+                  v-model="heroData.tagline"
+                  rows="2"
+                  class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none"
+                  placeholder="Everything's yummy at YoYo! Refreshing boba, bubble waffles & more."
+                ></textarea>
+              </label>
+
+              <div class="grid grid-cols-2 gap-4">
+                <label class="block">
+                  <span class="text-sm text-neutral-600">Button Text</span>
+                  <input
+                    v-model="heroData.ctaText"
+                    class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none"
+                    placeholder="Find Us Today"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-sm text-neutral-600">Button Link</span>
+                  <input
+                    v-model="heroData.ctaLink"
+                    class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none"
+                    placeholder="#schedule"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button
+            @click="saveHero"
+            :disabled="loading"
+            class="w-full bg-neutral-900 text-white py-3 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50"
+          >
+            {{ loading ? 'Saving...' : 'Save Hero' }}
+          </button>
+        </div>
+
+        <!-- About Editor -->
+        <div v-if="activeTab === 'about'" class="space-y-6">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">About Section</h2>
+            <p class="text-sm text-neutral-500 mb-6">Edit the "Our Story" section content.</p>
+
+            <div class="space-y-4">
+              <label class="block">
+                <span class="text-sm text-neutral-600">Heading</span>
+                <input
+                  v-model="aboutData.heading"
+                  class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none"
+                  placeholder="Our Story"
+                />
+              </label>
+
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm text-neutral-600">Paragraphs</span>
+                  <button
+                    @click="addParagraph"
+                    class="text-sm bg-neutral-900 text-white px-3 py-1 rounded hover:bg-neutral-800"
+                  >
+                    Add Paragraph
+                  </button>
+                </div>
+
+                <div class="space-y-3">
+                  <div
+                    v-for="(_paragraph, index) in aboutData.paragraphs"
+                    :key="index"
+                    class="border border-neutral-200 rounded-lg p-3"
+                  >
+                    <div class="flex justify-between items-start mb-2">
+                      <span class="text-xs text-neutral-400">Paragraph {{ index + 1 }}</span>
+                      <button
+                        @click="removeParagraph(index)"
+                        class="text-sm text-red-600 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <textarea
+                      v-model="aboutData.paragraphs[index]"
+                      rows="3"
+                      class="w-full rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none text-sm"
+                      placeholder="Enter paragraph text..."
+                    ></textarea>
+                  </div>
+
+                  <p v-if="aboutData.paragraphs.length === 0" class="text-neutral-500 text-center py-4 text-sm">
+                    No paragraphs yet. Click "Add Paragraph" to create one.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            @click="saveAbout"
+            :disabled="loading"
+            class="w-full bg-neutral-900 text-white py-3 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50"
+          >
+            {{ loading ? 'Saving...' : 'Save About' }}
+          </button>
         </div>
       </div>
     </main>

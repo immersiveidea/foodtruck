@@ -47,3 +47,15 @@ export interface BookingRequest {
 }
 
 export type BookingsData = BookingRequest[]
+
+export interface HeroContent {
+  title: string
+  tagline: string
+  ctaText: string
+  ctaLink: string
+}
+
+export interface AboutContent {
+  heading: string
+  paragraphs: string[]
+}

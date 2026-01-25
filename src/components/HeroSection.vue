@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useHero } from '../composables/useHero'
+
+const { hero } = useHero()
 </script>
 
 <template>
@@ -14,7 +17,7 @@
     <!-- Content -->
     <div class="relative">
       <nav class="flex items-center justify-between px-4 py-4 md:px-8">
-        <span class="font-display text-xl font-bold tracking-tight">YoYo Bubble Tea</span>
+        <span class="font-display text-xl font-bold tracking-tight">{{ hero.title }}</span>
         <div class="hidden md:flex gap-6 text-sm font-medium font-body">
           <a href="#about" class="hover:text-white/70 transition-colors">About</a>
           <a href="#menu" class="hover:text-white/70 transition-colors">Menu</a>
@@ -29,15 +32,15 @@
       </nav>
 
       <div class="px-4 py-20 md:py-32 md:px-8 text-center">
-        <h1 class="font-display text-5xl md:text-7xl font-bold tracking-tight mb-4 drop-shadow-lg">YoYo Bubble Tea</h1>
+        <h1 class="font-display text-5xl md:text-7xl font-bold tracking-tight mb-4 drop-shadow-lg">{{ hero.title }}</h1>
         <p class="font-body text-lg md:text-xl text-white/80 mb-8 max-w-md mx-auto drop-shadow">
-          Everything's yummy at YoYo! Refreshing boba, bubble waffles & more.
+          {{ hero.tagline }}
         </p>
         <a
-          href="#schedule"
+          :href="hero.ctaLink"
           class="inline-block font-body bg-white text-neutral-900 font-semibold px-6 py-3 rounded-full hover:bg-neutral-100 transition-colors shadow-lg"
         >
-          Find Us Today
+          {{ hero.ctaText }}
         </a>
       </div>
     </div>

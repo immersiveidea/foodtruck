@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import AddressAutocomplete from '../components/AddressAutocomplete.vue'
+import type { AddressSuggestion } from '../composables/useAddressSearch'
 
 const form = reactive({
   name: '',
@@ -9,10 +11,17 @@ const form = reactive({
   eventTime: '',
   location: '',
   address: '',
+  lat: null as number | null,
+  lng: null as number | null,
   eventType: '',
   guestCount: null as number | null,
   message: ''
 })
+
+function onAddressSelect(suggestion: AddressSuggestion) {
+  form.lat = parseFloat(suggestion.lat)
+  form.lng = parseFloat(suggestion.lon)
+}
 
 const loading = ref(false)
 const submitted = ref(false)
@@ -173,13 +182,14 @@ async function submitForm() {
 
             <label class="block">
               <span class="text-sm text-neutral-600">Address <span class="text-red-500">*</span></span>
-              <input
-                v-model="form.address"
-                type="text"
-                required
-                class="mt-1 block w-full rounded-lg border border-neutral-300 px-4 py-2 focus:border-neutral-500 focus:outline-none"
-                placeholder="123 Main St, Denver, CO"
-              />
+              <div class="mt-1">
+                <AddressAutocomplete
+                  v-model="form.address"
+                  placeholder="Start typing an address..."
+                  :required="true"
+                  @select="onAddressSelect"
+                />
+              </div>
             </label>
 
             <label class="block">
