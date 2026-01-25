@@ -48,13 +48,22 @@ const activeItems = computed(() => {
         <div
           v-for="item in activeItems"
           :key="item.name"
-          class="bg-white rounded-lg p-5 shadow-sm border border-neutral-100"
+          class="bg-white rounded-lg shadow-sm border border-neutral-100 overflow-hidden"
         >
-          <div class="flex justify-between items-start mb-2">
-            <h3 class="font-display text-lg font-semibold text-neutral-900">{{ item.name }}</h3>
-            <span class="font-display text-lg font-semibold text-neutral-900">${{ item.price.toFixed(2) }}</span>
+          <img
+            v-if="item.imageKey"
+            :src="`/api/images/${item.imageKey}`"
+            :alt="item.name"
+            loading="lazy"
+            class="w-full h-40 object-cover"
+          />
+          <div class="p-5">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-display text-lg font-semibold text-neutral-900">{{ item.name }}</h3>
+              <span class="font-display text-lg font-semibold text-neutral-900">${{ item.price.toFixed(2) }}</span>
+            </div>
+            <p v-if="item.description" class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
           </div>
-          <p v-if="item.description" class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
         </div>
       </div>
 

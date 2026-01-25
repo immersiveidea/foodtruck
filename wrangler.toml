@@ -7,3 +7,9 @@ pages_build_output_dir = "dist"
 binding = "CONTENT"
 id = "a1c14d5b12214f8387b677a0d77e4a19"
 preview_id = "3fdc036dcc1c4707adbe5323d90b292a"
+
+# R2 bucket for storing menu item images
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "foodtruck-images"
+preview_bucket_name = "foodtruck-images-preview"

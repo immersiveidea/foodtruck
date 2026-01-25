@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent } from '../types'
+import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem } from '../types'
 
 const adminKey = ref(localStorage.getItem('adminKey') || '')
+const uploadingItemIndex = ref<number | null>(null)
 const isAuthenticated = ref(false)
 const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'hero' | 'about'>('menu')
 const loading = ref(false)
@@ -237,7 +238,85 @@ function addMenuItem() {
 
 function removeMenuItem(index: number) {
   if (!selectedCategory.value) return
+  const item = selectedCategory.value.items[index]
+  if (item?.imageKey) {
+    deleteImageFromR2(item.imageKey)
+  }
   selectedCategory.value.items.splice(index, 1)
+}
+
+async function uploadImage(event: Event, item: MenuItem, index: number) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    message.value = { type: 'error', text: 'Invalid file type. Only JPEG, PNG, and WebP are allowed.' }
+    input.value = ''
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    message.value = { type: 'error', text: 'File too large. Maximum size is 5MB.' }
+    input.value = ''
+    return
+  }
+
+  uploadingItemIndex.value = index
+  message.value = null
+
+  try {
+    if (item.imageKey) {
+      await deleteImageFromR2(item.imageKey)
+    }
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const res = await fetch('/api/admin/images', {
+      method: 'POST',
+      headers: { 'X-Admin-Key': adminKey.value },
+      body: formData
+    })
+
+    if (res.ok) {
+      const data = await res.json() as { key: string }
+      item.imageKey = data.key
+      message.value = { type: 'success', text: 'Image uploaded. Click "Save Menu" to persist.' }
+    } else {
+      const error = await res.json() as { error: string }
+      message.value = { type: 'error', text: error.error || 'Failed to upload image' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to upload image' }
+  } finally {
+    uploadingItemIndex.value = null
+    input.value = ''
+  }
+}
+
+async function deleteImageFromR2(key: string) {
+  try {
+    await fetch(`/api/admin/images?key=${encodeURIComponent(key)}`, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Key': adminKey.value }
+    })
+  } catch {
+    console.error('Failed to delete image from R2')
+  }
+}
+
+async function removeImage(item: MenuItem) {
+  if (!item.imageKey) return
+
+  try {
+    await deleteImageFromR2(item.imageKey)
+    item.imageKey = undefined
+    message.value = { type: 'success', text: 'Image removed. Click "Save Menu" to persist.' }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to remove image' }
+  }
 }
 
 function exportMenu() {
@@ -615,9 +694,50 @@ onMounted(() => {
                 <textarea
                   v-model="item.description"
                   rows="2"
-                  class="w-full text-sm text-neutral-600 border border-neutral-200 rounded px-2 py-1 focus:border-neutral-400 focus:outline-none"
+                  class="w-full text-sm text-neutral-600 border border-neutral-200 rounded px-2 py-1 focus:border-neutral-400 focus:outline-none mb-3"
                   placeholder="Item description (optional)"
                 ></textarea>
+
+                <!-- Image Upload -->
+                <div class="flex items-center gap-3">
+                  <div
+                    v-if="item.imageKey"
+                    class="relative w-20 h-20 rounded-lg overflow-hidden border border-neutral-200"
+                  >
+                    <img
+                      :src="`/api/images/${item.imageKey}`"
+                      :alt="item.name"
+                      class="w-full h-full object-cover"
+                    />
+                    <button
+                      @click="removeImage(item)"
+                      class="absolute top-1 right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-700"
+                      title="Remove image"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <label class="cursor-pointer">
+                    <span
+                      :class="[
+                        'inline-block text-sm px-3 py-1 rounded border',
+                        uploadingItemIndex === index
+                          ? 'bg-neutral-100 text-neutral-400 border-neutral-200'
+                          : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
+                      ]"
+                    >
+                      {{ uploadingItemIndex === index ? 'Uploading...' : (item.imageKey ? 'Change Image' : 'Add Image') }}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      class="hidden"
+                      :disabled="uploadingItemIndex === index"
+                      @change="uploadImage($event, item, index)"
+                    />
+                  </label>
+                  <span class="text-xs text-neutral-400">JPEG, PNG, or WebP (max 5MB)</span>
+                </div>
               </div>
             </div>
           </div>
