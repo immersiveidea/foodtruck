@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import imageCompression from 'browser-image-compression'
 import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem } from '../types'
 
 const adminKey = ref(localStorage.getItem('adminKey') || '')
@@ -26,6 +27,12 @@ const heroData = ref<HeroContent>({ title: '', tagline: '', ctaText: '', ctaLink
 
 // About state
 const aboutData = ref<AboutContent>({ heading: '', paragraphs: [] })
+
+// Preview state
+const previewItem = ref<MenuItem | null>(null)
+const previewImageUrl = ref<string | null>(null)
+const previewPosition = ref<string>('center')
+const previewScale = ref<number>(1)
 
 const selectedCategory = computed(() =>
   menuData.value.categories.find(c => c.id === selectedCategoryId.value)
@@ -267,12 +274,22 @@ async function uploadImage(event: Event, item: MenuItem, index: number) {
   message.value = null
 
   try {
+    // Compress image before upload
+    const compressionOptions = {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 800,
+      useWebWorker: true,
+      fileType: 'image/webp' as const,
+      initialQuality: 0.8
+    }
+    const compressedFile = await imageCompression(file, compressionOptions)
+
     if (item.imageKey) {
       await deleteImageFromR2(item.imageKey)
     }
 
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', compressedFile)
 
     const res = await fetch('/api/admin/images', {
       method: 'POST',
@@ -317,6 +334,27 @@ async function removeImage(item: MenuItem) {
   } catch {
     message.value = { type: 'error', text: 'Failed to remove image' }
   }
+}
+
+function showPreview(item: MenuItem) {
+  previewItem.value = item
+  previewImageUrl.value = item.imageKey ? `/api/images/${item.imageKey}` : null
+  previewPosition.value = item.imagePosition || 'center'
+  previewScale.value = item.imageScale || 1
+}
+
+function closePreview() {
+  previewItem.value = null
+  previewImageUrl.value = null
+}
+
+function applyPosition() {
+  if (previewItem.value) {
+    previewItem.value.imagePosition = previewPosition.value
+    previewItem.value.imageScale = previewScale.value
+    message.value = { type: 'success', text: 'Image settings updated. Click "Save Menu" to persist.' }
+  }
+  closePreview()
 }
 
 function exportMenu() {
@@ -736,6 +774,13 @@ onMounted(() => {
                       @change="uploadImage($event, item, index)"
                     />
                   </label>
+                  <button
+                    v-if="item.imageKey"
+                    @click="showPreview(item)"
+                    class="text-sm text-neutral-600 border border-neutral-300 px-3 py-1 rounded hover:bg-neutral-50"
+                  >
+                    Preview
+                  </button>
                   <span class="text-xs text-neutral-400">JPEG, PNG, or WebP (max 5MB)</span>
                 </div>
               </div>
@@ -1170,5 +1215,92 @@ onMounted(() => {
         </div>
       </div>
     </main>
+
+    <!-- Image Preview Modal -->
+    <div v-if="previewItem" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-neutral-50 rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold mb-4">Menu Item Preview</h3>
+
+        <!-- Exact replica of TabbedMenuSection card -->
+        <div class="bg-white rounded-lg shadow-sm border border-neutral-100 overflow-hidden">
+          <div
+            v-if="previewImageUrl"
+            class="h-40 bg-neutral-100"
+            :style="{
+              backgroundImage: `url(${previewImageUrl})`,
+              backgroundPosition: previewPosition,
+              backgroundSize: `${previewScale * 100}%`,
+              backgroundRepeat: 'no-repeat'
+            }"
+          />
+          <div class="p-5">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-display text-lg font-semibold text-neutral-900">{{ previewItem.name }}</h3>
+              <span class="font-display text-lg font-semibold text-neutral-900">${{ previewItem.price.toFixed(2) }}</span>
+            </div>
+            <p v-if="previewItem.description" class="font-body text-sm text-neutral-500 leading-relaxed">
+              {{ previewItem.description }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Position Selector -->
+        <div v-if="previewImageUrl" class="mt-4">
+          <p class="text-sm text-neutral-600 mb-2">Image focal point:</p>
+          <div class="grid grid-cols-3 gap-1 w-32 mx-auto">
+            <button
+              v-for="pos in ['top left', 'top', 'top right', 'left', 'center', 'right', 'bottom left', 'bottom', 'bottom right']"
+              :key="pos"
+              @click="previewPosition = pos"
+              :class="[
+                'w-10 h-10 rounded text-xs border',
+                previewPosition === pos
+                  ? 'bg-neutral-900 text-white border-neutral-900'
+                  : 'bg-white text-neutral-500 border-neutral-300 hover:bg-neutral-100'
+              ]"
+              :title="pos"
+            >
+              {{ pos === 'top left' ? 'TL' : pos === 'top' ? 'T' : pos === 'top right' ? 'TR' : pos === 'left' ? 'L' : pos === 'center' ? 'C' : pos === 'right' ? 'R' : pos === 'bottom left' ? 'BL' : pos === 'bottom' ? 'B' : 'BR' }}
+            </button>
+          </div>
+
+          <!-- Scale/Zoom Slider -->
+          <div class="mt-4">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-sm text-neutral-600">Zoom:</span>
+              <span class="text-sm text-neutral-500">{{ previewScale < 1 ? `-${Math.round((1 - previewScale) * 100)}%` : previewScale > 1 ? `+${Math.round((previewScale - 1) * 100)}%` : '0%' }}</span>
+            </div>
+            <input
+              v-model.number="previewScale"
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.05"
+              class="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-neutral-900"
+            />
+            <div class="flex justify-between text-xs text-neutral-400 mt-1">
+              <span>Zoom out</span>
+              <span>1x</span>
+              <span>Zoom in</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-4">
+          <button
+            @click="closePreview"
+            class="flex-1 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-100"
+          >
+            Cancel
+          </button>
+          <button
+            @click="applyPosition"
+            class="flex-1 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

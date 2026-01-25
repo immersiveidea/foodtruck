@@ -3,6 +3,8 @@ export interface MenuItem {
   description?: string
   price: number
   imageKey?: string
+  imagePosition?: string  // CSS object-position value, e.g., "center", "top left"
+  imageScale?: number     // Scale factor for zoom/crop, default 1 (range 1-2)
 }
 
 export interface MenuCategory {
