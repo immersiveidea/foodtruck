@@ -185,6 +185,13 @@ The app will be available at `http://localhost:8788`. The admin panel is at `/ad
 
 Admin endpoints require `X-Admin-Key` header matching the `ADMIN_KEY` environment variable.
 
+### API Documentation
+
+- **OpenAPI Specification**: `/openapi.yaml` - Machine-readable API spec (OpenAPI 3.0)
+- **Interactive Docs**: `/docs.html` - Swagger UI for exploring and testing the API
+
+When API endpoints change, update `public/openapi.yaml` to keep the documentation in sync.
+
 ---
 
 ## Updating the Schedule

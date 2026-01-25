@@ -1,0 +1,747 @@
+openapi: 3.0.3
+info:
+  title: Foodtruck API
+  version: 1.0.0
+  description: |
+    API for YoYo Bubble Tea food truck website.
+
+    Admin endpoints require the `X-Admin-Key` header matching the configured `ADMIN_KEY` environment variable.
+
+servers:
+  - url: http://localhost:8788
+    description: Local development
+  - url: https://your-site.pages.dev
+    description: Production (replace with your actual domain)
+
+components:
+  securitySchemes:
+    AdminKey:
+      type: apiKey
+      in: header
+      name: X-Admin-Key
+      description: Admin authentication key
+
+  schemas:
+    MenuItem:
+      type: object
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+          example: Classic Milk Tea
+        description:
+          type: string
+          example: Traditional Taiwanese milk tea with tapioca pearls
+        price:
+          type: number
+          format: float
+          example: 6.50
+        imageKey:
+          type: string
+          description: R2 storage key for the item image
+          example: menu/1706123456789-classic-milk-tea.jpg
+        imagePosition:
+          type: string
+          description: CSS object-position value for image display
+          example: center
+        imageScale:
+          type: number
+          format: float
+          description: Scale factor for zoom/crop (range 1-2)
+          minimum: 1
+          maximum: 2
+          default: 1
+          example: 1.2
+
+    MenuCategory:
+      type: object
+      required:
+        - id
+        - name
+        - items
+      properties:
+        id:
+          type: string
+          example: milk-teas
+        name:
+          type: string
+          example: Milk Teas
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItem'
+
+    MenuData:
+      type: object
+      required:
+        - categories
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuCategory'
+
+    ScheduleLocation:
+      type: object
+      required:
+        - id
+        - day
+        - date
+        - location
+        - address
+        - time
+        - lat
+        - lng
+      properties:
+        id:
+          type: integer
+          example: 1
+        day:
+          type: string
+          example: Saturday
+        date:
+          type: string
+          example: Jan 27
+        location:
+          type: string
+          example: Windsor Farmers Market
+        address:
+          type: string
+          example: 123 Main St, Windsor, CO
+        time:
+          type: string
+          example: 9:00 AM - 1:00 PM
+        lat:
+          type: number
+          format: float
+          example: 40.48
+        lng:
+          type: number
+          format: float
+          example: -104.90
+
+    ScheduleData:
+      type: array
+      items:
+        $ref: '#/components/schemas/ScheduleLocation'
+
+    BookingSubmission:
+      type: object
+      required:
+        - name
+        - email
+        - phone
+        - eventDate
+        - eventTime
+        - location
+        - address
+        - eventType
+        - guestCount
+      properties:
+        name:
+          type: string
+          example: John Smith
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        phone:
+          type: string
+          example: 555-123-4567
+        eventDate:
+          type: string
+          example: "2024-02-15"
+        eventTime:
+          type: string
+          example: "2:00 PM"
+        location:
+          type: string
+          example: City Park
+        address:
+          type: string
+          example: 456 Park Ave, Windsor, CO
+        eventType:
+          type: string
+          example: Birthday Party
+        guestCount:
+          type: integer
+          minimum: 1
+          example: 50
+        message:
+          type: string
+          example: We'd love to have bubble tea for our company picnic!
+
+    BookingStatus:
+      type: string
+      enum:
+        - pending
+        - confirmed
+        - denied
+
+    BookingRequest:
+      allOf:
+        - $ref: '#/components/schemas/BookingSubmission'
+        - type: object
+          required:
+            - id
+            - status
+            - createdAt
+          properties:
+            id:
+              type: string
+              example: booking-1706123456789-abc1234
+            status:
+              $ref: '#/components/schemas/BookingStatus'
+            createdAt:
+              type: string
+              format: date-time
+              example: "2024-01-25T10:30:00.000Z"
+            adminNotes:
+              type: string
+              example: Confirmed via phone call
+
+    BookingsData:
+      type: array
+      items:
+        $ref: '#/components/schemas/BookingRequest'
+
+    BookingUpdateRequest:
+      type: object
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          example: booking-1706123456789-abc1234
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        adminNotes:
+          type: string
+          example: Called customer to confirm details
+
+    HeroContent:
+      type: object
+      required:
+        - title
+        - tagline
+        - ctaText
+        - ctaLink
+      properties:
+        title:
+          type: string
+          example: YoYo Bubble Tea
+        tagline:
+          type: string
+          example: Authentic Taiwanese Bubble Tea on Wheels
+        ctaText:
+          type: string
+          example: View Our Menu
+        ctaLink:
+          type: string
+          example: "#menu"
+
+    AboutContent:
+      type: object
+      required:
+        - heading
+        - paragraphs
+      properties:
+        heading:
+          type: string
+          example: About Us
+        paragraphs:
+          type: array
+          items:
+            type: string
+          example:
+            - We started YoYo Bubble Tea with a simple mission...
+            - Every drink is made fresh to order...
+
+    SuccessResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          example: true
+
+    BookingSuccessResponse:
+      type: object
+      required:
+        - success
+        - id
+      properties:
+        success:
+          type: boolean
+          example: true
+        id:
+          type: string
+          example: booking-1706123456789-abc1234
+
+    ImageUploadResponse:
+      type: object
+      required:
+        - key
+      properties:
+        key:
+          type: string
+          description: R2 storage key for the uploaded image
+          example: menu/1706123456789-bubble-tea.jpg
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Missing required field
+
+paths:
+  /api/menu:
+    get:
+      summary: Get menu data
+      description: Returns the complete menu with all categories and items
+      tags:
+        - Public
+      responses:
+        '200':
+          description: Menu data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuData'
+
+  /api/schedule:
+    get:
+      summary: Get schedule data
+      description: Returns upcoming food truck locations and times
+      tags:
+        - Public
+      responses:
+        '200':
+          description: Schedule data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleData'
+
+  /api/hero:
+    get:
+      summary: Get hero content
+      description: Returns hero section content (title, tagline, CTA)
+      tags:
+        - Public
+      responses:
+        '200':
+          description: Hero content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeroContent'
+
+  /api/about:
+    get:
+      summary: Get about content
+      description: Returns about section content
+      tags:
+        - Public
+      responses:
+        '200':
+          description: About content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AboutContent'
+
+  /api/bookings:
+    post:
+      summary: Submit booking request
+      description: Submit a new booking/catering request
+      tags:
+        - Public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingSubmission'
+      responses:
+        '200':
+          description: Booking submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingSuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/images/{path}:
+    get:
+      summary: Get image
+      description: Retrieve an image from R2 storage
+      tags:
+        - Public
+      parameters:
+        - name: path
+          in: path
+          required: true
+          description: Image storage path (e.g., menu/1706123456789-image.jpg)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Image binary data
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Image not found
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Not found
+
+  /api/admin/menu:
+    get:
+      summary: Get menu data (admin)
+      description: Returns the complete menu data
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      responses:
+        '200':
+          description: Menu data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuData'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Update menu data
+      description: Replace the entire menu data
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuData'
+      responses:
+        '200':
+          description: Menu updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+
+  /api/admin/schedule:
+    get:
+      summary: Get schedule data (admin)
+      description: Returns the schedule data
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      responses:
+        '200':
+          description: Schedule data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleData'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Update schedule data
+      description: Replace the entire schedule data
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleData'
+      responses:
+        '200':
+          description: Schedule updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+
+  /api/admin/hero:
+    get:
+      summary: Get hero content (admin)
+      description: Returns the hero section content
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      responses:
+        '200':
+          description: Hero content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeroContent'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Update hero content
+      description: Replace the hero section content
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeroContent'
+      responses:
+        '200':
+          description: Hero content updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+
+  /api/admin/about:
+    get:
+      summary: Get about content (admin)
+      description: Returns the about section content
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      responses:
+        '200':
+          description: About content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AboutContent'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Update about content
+      description: Replace the about section content
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AboutContent'
+      responses:
+        '200':
+          description: About content updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+
+  /api/admin/bookings:
+    get:
+      summary: Get all bookings
+      description: Returns all booking requests
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      responses:
+        '200':
+          description: Bookings data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingsData'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Update booking status
+      description: Update the status and/or admin notes of a booking
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingUpdateRequest'
+      responses:
+        '200':
+          description: Booking updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Missing id or status, or invalid status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/images:
+    post:
+      summary: Upload image
+      description: |
+        Upload an image to R2 storage.
+        Allowed types: JPEG, PNG, WebP.
+        Maximum size: 5MB.
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file to upload
+      responses:
+        '200':
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+        '400':
+          description: No file provided, invalid file type, or file too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Failed to upload image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete image
+      description: Delete an image from R2 storage
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      parameters:
+        - name: key
+          in: query
+          required: true
+          description: R2 storage key of the image to delete
+          schema:
+            type: string
+          example: menu/1706123456789-bubble-tea.jpg
+      responses:
+        '200':
+          description: Image deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: No key provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Failed to delete image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+tags:
+  - name: Public
+    description: Public API endpoints (no authentication required)
+  - name: Admin
+    description: Admin API endpoints (requires X-Admin-Key header)
