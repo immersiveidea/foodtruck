@@ -15,6 +15,7 @@ export interface MenuCategory {
 
 export interface MenuData {
   categories: MenuCategory[]
+  footerText?: string  // Optional footer text displayed below the menu
 }
 
 export interface ScheduleLocation {

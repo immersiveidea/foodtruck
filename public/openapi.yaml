@@ -82,6 +82,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MenuCategory'
+        footerText:
+          type: string
+          description: Optional text displayed below the menu items
+          example: Add tapioca pearls, popping boba, grass jelly, or other toppings to any drink!
 
     ScheduleLocation:
       type: object

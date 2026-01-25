@@ -883,6 +883,18 @@ onMounted(() => {
             </div>
           </div>
 
+          <!-- Menu Footer Text -->
+          <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-2">Menu Footer</h2>
+            <p class="text-sm text-neutral-500 mb-4">Optional text displayed below the menu items (e.g., toppings info, specials).</p>
+            <textarea
+              v-model="menuData.footerText"
+              rows="2"
+              class="w-full rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none text-sm"
+              placeholder="Add tapioca pearls, popping boba, grass jelly, or other toppings to any drink!"
+            ></textarea>
+          </div>
+
           <button
             @click="saveMenu"
             :disabled="loading"

@@ -72,8 +72,8 @@ const activeItems = computed(() => {
         </div>
       </div>
 
-      <p class="font-body text-center text-neutral-500 text-sm mt-8">
-        Add tapioca pearls, popping boba, grass jelly, or other toppings to any drink!
+      <p v-if="menu.footerText" class="font-body text-center text-neutral-500 text-sm mt-8">
+        {{ menu.footerText }}
       </p>
     </div>
   </section>
