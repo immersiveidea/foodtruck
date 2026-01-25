@@ -1,0 +1,11 @@
+# Feature Roadmap
+- [x] Ability to update, change, and adjust hero background image (Site Management)
+- [ ] Change events, and scheduling admin pages to use a date picker and time picker for start times and time picker for end time for scheduling and events.
+- [ ] Ability to update title and meta tags (SEO)
+- [ ] Ability to generate sitemap for seo and crawlers (SEO)
+- [ ] Social sharing (Marketing)
+- [ ] Ability to follow on social media (twitter, instagram, tictok, facebook, etc) (Marketing)
+- [ ] Integration with google calendar to pull locations and times (Discovery)
+- [ ] Integration with google sheets to enable menu management with google sheets (Menu Management)
+- [ ] Online Ordering (Selling)
+- [ ] Ability to set service area with a central location and pricing rings based on distance from main location

@@ -56,6 +56,9 @@ export interface HeroContent {
   tagline: string
   ctaText: string
   ctaLink: string
+  imageKey?: string
+  imagePosition?: string  // CSS object-position value, e.g., "center", "top left"
+  imageScale?: number     // Scale factor for zoom/crop, default 1 (range 0.5-2)
 }
 
 export interface AboutContent {

@@ -242,6 +242,22 @@ components:
         ctaLink:
           type: string
           example: "#menu"
+        imageKey:
+          type: string
+          description: R2 storage key for the hero background image
+          example: menu/1706123456789-hero-background.jpg
+        imagePosition:
+          type: string
+          description: CSS object-position value for image display
+          example: center
+        imageScale:
+          type: number
+          format: float
+          description: Scale factor for zoom/crop (range 0.5-2)
+          minimum: 0.5
+          maximum: 2
+          default: 1
+          example: 1
 
     AboutContent:
       type: object

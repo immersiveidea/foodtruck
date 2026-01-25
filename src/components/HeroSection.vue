@@ -1,15 +1,30 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useHero } from '../composables/useHero'
 
 const { hero } = useHero()
+
+const backgroundStyle = computed(() => {
+  const imageUrl = hero.value.imageKey
+    ? `/api/images/${hero.value.imageKey}`
+    : '/hero.jpg'
+  const position = hero.value.imagePosition || 'center'
+  const scale = hero.value.imageScale || 1
+
+  return {
+    backgroundImage: `url('${imageUrl}')`,
+    backgroundPosition: position,
+    backgroundSize: scale === 1 ? 'cover' : `${scale * 100}%`
+  }
+})
 </script>
 
 <template>
   <header class="relative text-white">
     <!-- Background Image -->
     <div
-      class="absolute inset-0 bg-cover bg-center"
-      style="background-image: url('/hero.jpg')"
+      class="absolute inset-0 bg-cover bg-no-repeat"
+      :style="backgroundStyle"
     ></div>
     <!-- Dark Overlay -->
     <div class="absolute inset-0 bg-black/40"></div>

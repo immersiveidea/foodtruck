@@ -24,6 +24,10 @@ const expandedBookingId = ref<string | null>(null)
 
 // Hero state
 const heroData = ref<HeroContent>({ title: '', tagline: '', ctaText: '', ctaLink: '' })
+const uploadingHeroImage = ref(false)
+const heroPreviewOpen = ref(false)
+const heroPreviewPosition = ref('center')
+const heroPreviewScale = ref(1)
 
 // About state
 const aboutData = ref<AboutContent>({ heading: '', paragraphs: [] })
@@ -182,6 +186,98 @@ async function saveHero() {
   } finally {
     loading.value = false
   }
+}
+
+async function uploadHeroImage(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    message.value = { type: 'error', text: 'Invalid file type. Only JPEG, PNG, and WebP are allowed.' }
+    input.value = ''
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    message.value = { type: 'error', text: 'File too large. Maximum size is 5MB.' }
+    input.value = ''
+    return
+  }
+
+  uploadingHeroImage.value = true
+  message.value = null
+
+  try {
+    // Compress image before upload - use larger dimensions for hero
+    const compressionOptions = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+      fileType: 'image/webp' as const,
+      initialQuality: 0.85
+    }
+    const compressedFile = await imageCompression(file, compressionOptions)
+
+    if (heroData.value.imageKey) {
+      await deleteImageFromR2(heroData.value.imageKey)
+    }
+
+    const formData = new FormData()
+    formData.append('file', compressedFile)
+
+    const res = await fetch('/api/admin/images', {
+      method: 'POST',
+      headers: { 'X-Admin-Key': adminKey.value },
+      body: formData
+    })
+
+    if (res.ok) {
+      const data = await res.json() as { key: string }
+      heroData.value.imageKey = data.key
+      message.value = { type: 'success', text: 'Hero image uploaded. Click "Save Hero" to persist.' }
+    } else {
+      const error = await res.json() as { error: string }
+      message.value = { type: 'error', text: error.error || 'Failed to upload image' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to upload hero image' }
+  } finally {
+    uploadingHeroImage.value = false
+    input.value = ''
+  }
+}
+
+async function removeHeroImage() {
+  if (!heroData.value.imageKey) return
+
+  try {
+    await deleteImageFromR2(heroData.value.imageKey)
+    heroData.value.imageKey = undefined
+    heroData.value.imagePosition = undefined
+    heroData.value.imageScale = undefined
+    message.value = { type: 'success', text: 'Hero image removed. Click "Save Hero" to persist.' }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to remove hero image' }
+  }
+}
+
+function showHeroPreview() {
+  heroPreviewPosition.value = heroData.value.imagePosition || 'center'
+  heroPreviewScale.value = heroData.value.imageScale || 1
+  heroPreviewOpen.value = true
+}
+
+function closeHeroPreview() {
+  heroPreviewOpen.value = false
+}
+
+function applyHeroPosition() {
+  heroData.value.imagePosition = heroPreviewPosition.value
+  heroData.value.imageScale = heroPreviewScale.value
+  message.value = { type: 'success', text: 'Image settings updated. Click "Save Hero" to persist.' }
+  closeHeroPreview()
 }
 
 async function saveAbout() {
@@ -1097,6 +1193,67 @@ onMounted(() => {
             <p class="text-sm text-neutral-500 mb-6">Edit the hero banner content that appears at the top of the homepage.</p>
 
             <div class="space-y-4">
+              <!-- Hero Background Image -->
+              <div>
+                <span class="text-sm text-neutral-600 block mb-2">Background Image</span>
+                <div class="flex items-start gap-4">
+                  <div
+                    class="relative w-48 h-28 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100"
+                    :style="heroData.imageKey ? {
+                      backgroundImage: `url(/api/images/${heroData.imageKey})`,
+                      backgroundPosition: heroData.imagePosition || 'center',
+                      backgroundSize: (heroData.imageScale || 1) === 1 ? 'cover' : `${(heroData.imageScale || 1) * 100}%`,
+                      backgroundRepeat: 'no-repeat'
+                    } : {
+                      backgroundImage: 'url(/hero.jpg)',
+                      backgroundPosition: 'center',
+                      backgroundSize: 'cover'
+                    }"
+                  >
+                    <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
+                      <span class="text-white text-xs font-medium">{{ heroData.imageKey ? 'Custom Image' : 'Default Image' }}</span>
+                    </div>
+                    <button
+                      v-if="heroData.imageKey"
+                      @click="removeHeroImage"
+                      class="absolute top-1 right-1 w-6 h-6 bg-red-600 text-white rounded-full text-sm flex items-center justify-center hover:bg-red-700"
+                      title="Remove image"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="cursor-pointer">
+                      <span
+                        :class="[
+                          'inline-block text-sm px-3 py-1.5 rounded border',
+                          uploadingHeroImage
+                            ? 'bg-neutral-100 text-neutral-400 border-neutral-200'
+                            : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
+                        ]"
+                      >
+                        {{ uploadingHeroImage ? 'Uploading...' : (heroData.imageKey ? 'Change Image' : 'Upload Image') }}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        class="hidden"
+                        :disabled="uploadingHeroImage"
+                        @change="uploadHeroImage"
+                      />
+                    </label>
+                    <button
+                      v-if="heroData.imageKey"
+                      @click="showHeroPreview"
+                      class="text-sm text-neutral-600 border border-neutral-300 px-3 py-1.5 rounded hover:bg-neutral-50"
+                    >
+                      Adjust Position
+                    </button>
+                    <span class="text-xs text-neutral-400">JPEG, PNG, or WebP (max 5MB)</span>
+                  </div>
+                </div>
+              </div>
+
               <label class="block">
                 <span class="text-sm text-neutral-600">Title</span>
                 <input
@@ -1295,6 +1452,89 @@ onMounted(() => {
           </button>
           <button
             @click="applyPosition"
+            class="flex-1 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero Image Preview Modal -->
+    <div v-if="heroPreviewOpen && heroData.imageKey" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-neutral-50 rounded-lg p-6 max-w-lg w-full mx-4">
+        <h3 class="text-lg font-semibold mb-4">Hero Image Preview</h3>
+
+        <!-- Hero preview -->
+        <div class="relative rounded-lg overflow-hidden">
+          <div
+            class="h-48 bg-neutral-100"
+            :style="{
+              backgroundImage: `url(/api/images/${heroData.imageKey})`,
+              backgroundPosition: heroPreviewPosition,
+              backgroundSize: heroPreviewScale === 1 ? 'cover' : `${heroPreviewScale * 100}%`,
+              backgroundRepeat: 'no-repeat'
+            }"
+          />
+          <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <div class="text-center text-white">
+              <h2 class="text-2xl font-bold mb-2">{{ heroData.title || 'Your Title' }}</h2>
+              <p class="text-sm opacity-80">{{ heroData.tagline || 'Your tagline here' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Position Selector -->
+        <div class="mt-4">
+          <p class="text-sm text-neutral-600 mb-2">Image focal point:</p>
+          <div class="grid grid-cols-3 gap-1 w-32 mx-auto">
+            <button
+              v-for="pos in ['top left', 'top', 'top right', 'left', 'center', 'right', 'bottom left', 'bottom', 'bottom right']"
+              :key="pos"
+              @click="heroPreviewPosition = pos"
+              :class="[
+                'w-10 h-10 rounded text-xs border',
+                heroPreviewPosition === pos
+                  ? 'bg-neutral-900 text-white border-neutral-900'
+                  : 'bg-white text-neutral-500 border-neutral-300 hover:bg-neutral-100'
+              ]"
+              :title="pos"
+            >
+              {{ pos === 'top left' ? 'TL' : pos === 'top' ? 'T' : pos === 'top right' ? 'TR' : pos === 'left' ? 'L' : pos === 'center' ? 'C' : pos === 'right' ? 'R' : pos === 'bottom left' ? 'BL' : pos === 'bottom' ? 'B' : 'BR' }}
+            </button>
+          </div>
+
+          <!-- Scale/Zoom Slider -->
+          <div class="mt-4">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-sm text-neutral-600">Zoom:</span>
+              <span class="text-sm text-neutral-500">{{ heroPreviewScale < 1 ? `-${Math.round((1 - heroPreviewScale) * 100)}%` : heroPreviewScale > 1 ? `+${Math.round((heroPreviewScale - 1) * 100)}%` : '0%' }}</span>
+            </div>
+            <input
+              v-model.number="heroPreviewScale"
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.05"
+              class="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-neutral-900"
+            />
+            <div class="flex justify-between text-xs text-neutral-400 mt-1">
+              <span>Zoom out</span>
+              <span>1x</span>
+              <span>Zoom in</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-4">
+          <button
+            @click="closeHeroPreview"
+            class="flex-1 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-100"
+          >
+            Cancel
+          </button>
+          <button
+            @click="applyHeroPosition"
             class="flex-1 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800"
           >
             Apply
