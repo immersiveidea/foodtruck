@@ -7,12 +7,18 @@ import type { ScheduleLocation } from '../types'
 const { schedule } = useSchedule()
 const selectedLocation = ref<ScheduleLocation | null>(null)
 
-// Set initial selected location when schedule loads
+// Set initial selected location when schedule loads, and update when schedule data changes
 watch(
   schedule,
   (newSchedule) => {
-    if (newSchedule.length > 0 && !selectedLocation.value) {
-      selectedLocation.value = newSchedule[0]!
+    if (newSchedule.length > 0) {
+      // If we have a selection, find the matching item in the new schedule by id
+      if (selectedLocation.value) {
+        const updated = newSchedule.find(loc => loc.id === selectedLocation.value!.id)
+        selectedLocation.value = updated || newSchedule[0]!
+      } else {
+        selectedLocation.value = newSchedule[0]!
+      }
     }
   },
   { immediate: true }

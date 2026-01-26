@@ -5,6 +5,7 @@ import JSZip from 'jszip'
 import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem } from '../types'
 import AddressAutocomplete from '../components/AddressAutocomplete.vue'
 import TimeRangePicker from '../components/TimeRangePicker.vue'
+import MapPicker from '../components/MapPicker.vue'
 import type { AddressSuggestion } from '../composables/useAddressSearch'
 import { formatDayOfWeek, formatDisplayDate, formatTimeRange, formatTimestamp } from '../composables/useDateTimeFormat'
 
@@ -533,7 +534,7 @@ function saveScheduleEvent() {
 
   const existingIndex = scheduleData.value.findIndex(e => e.id === editingEvent.value!.id)
   if (existingIndex >= 0) {
-    scheduleData.value[existingIndex] = editingEvent.value
+    scheduleData.value.splice(existingIndex, 1, editingEvent.value)
   } else {
     scheduleData.value.push(editingEvent.value)
   }
@@ -1100,7 +1101,7 @@ onMounted(() => {
 
             <!-- Event Editor Modal -->
             <div v-if="editingEvent" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
                 <h3 class="text-lg font-semibold mb-4">
                   {{ scheduleData.find(e => e.id === editingEvent?.id) ? 'Edit Event' : 'New Event' }}
                 </h3>
@@ -1152,6 +1153,17 @@ onMounted(() => {
                       />
                     </div>
                     <span class="text-xs text-neutral-400 mt-1">Latitude and longitude will auto-fill when you select an address</span>
+                  </div>
+
+                  <div class="block">
+                    <span class="text-sm text-neutral-600">Adjust Location</span>
+                    <div class="mt-1">
+                      <MapPicker
+                        v-model:lat="editingEvent.lat"
+                        v-model:lng="editingEvent.lng"
+                      />
+                    </div>
+                    <span class="text-xs text-neutral-400 mt-1">Click or drag the marker to set exact position</span>
                   </div>
 
                   <div class="grid grid-cols-2 gap-4">
