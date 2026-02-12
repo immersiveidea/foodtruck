@@ -2,6 +2,7 @@
 - [x] Ability to update, change, and adjust hero background image (Site Management)
 - [x] Change events, and scheduling admin pages to use a date picker and time picker for start times and time picker for end time for scheduling and events.
 - [x] When adding events, add openmap integration to verify address and autofill lat and long
+- [ ] Ability to create more precise location for food truck event by clicking on map or moving pin
 - [ ] Ability to update title and meta tags (SEO)
 - [ ] Ability to generate sitemap for seo and crawlers (SEO)
 - [ ] Social sharing (Marketing)
@@ -10,3 +11,5 @@
 - [ ] Integration with google sheets to enable menu management with google sheets (Menu Management)
 - [ ] Online Ordering (Selling)
 - [ ] Ability to set service area with a central location and pricing rings based on distance from main location
+- [ ] Build ability to package and deploy as an electron app or PWA
+- [ ] Enable offline editing for admin functionality with manual sync for poor connectivity
