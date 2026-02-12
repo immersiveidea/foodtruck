@@ -13,6 +13,7 @@ interface FaviconContent {
   hasCustomFavicon: boolean
   siteName: string
   themeColor: string
+  metaDescription: string
 }
 
 const FAVICON_KEYS = [
@@ -31,7 +32,7 @@ export const onRequestGet: PagesFunction<Env, string, ContextData> = async (cont
   try {
     const data = await context.env.CONTENT.get('favicon', 'json') as FaviconContent | null
     logger.info('Favicon metadata retrieved')
-    return Response.json(data ?? { hasCustomFavicon: false, siteName: '', themeColor: '#ffffff' })
+    return Response.json(data ?? { hasCustomFavicon: false, siteName: '', themeColor: '#ffffff', metaDescription: '' })
   } catch (error) {
     logger.error('Failed to get favicon', { error: error instanceof Error ? error.message : String(error) })
     return Response.json({ error: 'Failed to get favicon metadata' }, { status: 500 })
@@ -65,7 +66,8 @@ export const onRequestDelete: PagesFunction<Env, string, ContextData> = async (c
     await context.env.CONTENT.put('favicon', JSON.stringify({
       hasCustomFavicon: false,
       siteName: '',
-      themeColor: '#ffffff'
+      themeColor: '#ffffff',
+      metaDescription: ''
     }))
 
     logger.info('Favicon removed', { deletedKeys: FAVICON_KEYS.length })

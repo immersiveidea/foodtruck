@@ -78,4 +78,5 @@ export interface FaviconContent {
   hasCustomFavicon: boolean
   siteName: string
   themeColor: string
+  metaDescription: string
 }

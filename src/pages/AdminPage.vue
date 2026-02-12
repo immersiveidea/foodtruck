@@ -44,7 +44,7 @@ const heroPreviewScale = ref(1)
 const aboutData = ref<AboutContent>({ heading: '', paragraphs: [] })
 
 // Favicon state
-const faviconData = ref<FaviconContent>({ hasCustomFavicon: false, siteName: '', themeColor: '#ffffff' })
+const faviconData = ref<FaviconContent>({ hasCustomFavicon: false, siteName: '', themeColor: '#ffffff', metaDescription: '' })
 const uploadingFavicon = ref(false)
 const faviconPreviewVariants = ref<FaviconVariant[]>([])
 
@@ -1828,6 +1828,24 @@ onMounted(() => {
                     placeholder="#ffffff"
                   />
                 </div>
+              </label>
+            </div>
+
+            <!-- SEO Settings -->
+            <div class="border-t border-neutral-200 pt-6 space-y-4">
+              <h3 class="font-medium">SEO Settings</h3>
+              <p class="text-sm text-neutral-500">Set a meta description to improve how your site appears in search engine results.</p>
+
+              <label class="block">
+                <span class="text-sm text-neutral-600">Meta Description</span>
+                <textarea
+                  v-model="faviconData.metaDescription"
+                  rows="3"
+                  maxlength="160"
+                  class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none text-sm"
+                  placeholder="A short description of your food truck for search engines (max 160 characters)"
+                ></textarea>
+                <span class="text-xs text-neutral-400 mt-1 block">{{ faviconData.metaDescription?.length || 0 }}/160 characters</span>
               </label>
             </div>
           </div>
