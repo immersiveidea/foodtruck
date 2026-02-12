@@ -50,18 +50,18 @@ const activeItems = computed(() => {
           :key="item.name"
           class="bg-white rounded-lg shadow-sm border border-neutral-100 overflow-hidden"
         >
-          <div
-            v-if="item.imageKey"
-            class="h-40 bg-neutral-100"
-            role="img"
-            :aria-label="item.name"
-            :style="{
-              backgroundImage: `url(/api/images/${item.imageKey})`,
-              backgroundPosition: item.imagePosition || 'center',
-              backgroundSize: `${(item.imageScale || 1) * 100}%`,
-              backgroundRepeat: 'no-repeat'
-            }"
-          />
+          <div v-if="item.imageKey" class="relative h-40 bg-neutral-100 overflow-hidden">
+            <img
+              :src="`/api/images/${item.imageKey}`"
+              :alt="item.name"
+              class="absolute w-full"
+              :style="{
+                top: '50%',
+                left: '50%',
+                transform: `translate(-50%, -50%) scale(${item.imageScale || 1})`
+              }"
+            />
+          </div>
           <div class="p-5">
             <div class="flex justify-between items-start mb-2">
               <h3 class="font-display text-lg font-semibold text-neutral-900">{{ item.name }}</h3>
