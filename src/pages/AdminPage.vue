@@ -2,7 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import imageCompression from 'browser-image-compression'
 import JSZip from 'jszip'
-import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem } from '../types'
+import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem, FaviconContent } from '../types'
+import { validateSourceImage, validateImageDimensions, generateFaviconVariants } from '../lib/favicon/generator'
+import type { FaviconVariant } from '../lib/favicon/generator'
 import AddressAutocomplete from '../components/AddressAutocomplete.vue'
 import TimeRangePicker from '../components/TimeRangePicker.vue'
 import MapPicker from '../components/MapPicker.vue'
@@ -15,7 +17,7 @@ const logger = useLogger('AdminPage')
 const adminKey = ref(localStorage.getItem('adminKey') || '')
 const uploadingItemIndex = ref<number | null>(null)
 const isAuthenticated = ref(false)
-const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'hero' | 'about' | 'backup'>('menu')
+const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'hero' | 'about' | 'favicon' | 'backup'>('menu')
 const loading = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -40,6 +42,11 @@ const heroPreviewScale = ref(1)
 
 // About state
 const aboutData = ref<AboutContent>({ heading: '', paragraphs: [] })
+
+// Favicon state
+const faviconData = ref<FaviconContent>({ hasCustomFavicon: false, siteName: '', themeColor: '#ffffff' })
+const uploadingFavicon = ref(false)
+const faviconPreviewVariants = ref<FaviconVariant[]>([])
 
 // Backup state
 const backupLoading = ref(false)
@@ -83,12 +90,13 @@ async function authenticate() {
 async function loadData() {
   loading.value = true
   try {
-    const [menuRes, scheduleRes, bookingsRes, heroRes, aboutRes] = await Promise.all([
+    const [menuRes, scheduleRes, bookingsRes, heroRes, aboutRes, faviconRes] = await Promise.all([
       fetch('/api/admin/menu', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/schedule', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/bookings', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/hero', { headers: { 'X-Admin-Key': adminKey.value } }),
-      fetch('/api/admin/about', { headers: { 'X-Admin-Key': adminKey.value } })
+      fetch('/api/admin/about', { headers: { 'X-Admin-Key': adminKey.value } }),
+      fetch('/api/admin/favicon', { headers: { 'X-Admin-Key': adminKey.value } })
     ])
 
     if (menuRes.ok) {
@@ -119,6 +127,11 @@ async function loadData() {
       if (data.heading) {
         aboutData.value = data
       }
+    }
+
+    if (faviconRes.ok) {
+      const data = await faviconRes.json()
+      faviconData.value = data
     }
   } catch {
     message.value = { type: 'error', text: 'Failed to load data' }
@@ -314,6 +327,114 @@ async function saveAbout() {
     }
   } catch {
     message.value = { type: 'error', text: 'Failed to save about content' }
+  } finally {
+    loading.value = false
+  }
+}
+
+// Favicon functions
+async function saveFavicon() {
+  loading.value = true
+  message.value = null
+  try {
+    const res = await fetch('/api/admin/favicon', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': adminKey.value
+      },
+      body: JSON.stringify(faviconData.value)
+    })
+
+    if (res.ok) {
+      message.value = { type: 'success', text: 'Favicon settings saved successfully' }
+    } else {
+      message.value = { type: 'error', text: 'Failed to save favicon settings' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to save favicon settings' }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function uploadFavicon(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  const typeError = validateSourceImage(file)
+  if (typeError) {
+    message.value = { type: 'error', text: typeError }
+    input.value = ''
+    return
+  }
+
+  uploadingFavicon.value = true
+  message.value = null
+
+  try {
+    const dimError = await validateImageDimensions(file)
+    if (dimError) {
+      message.value = { type: 'error', text: dimError }
+      uploadingFavicon.value = false
+      input.value = ''
+      return
+    }
+
+    // Generate all variants client-side
+    const variants = await generateFaviconVariants(file)
+    faviconPreviewVariants.value = variants
+
+    // Upload each variant to R2 using the restore-image endpoint
+    for (const variant of variants) {
+      const formData = new FormData()
+      formData.append('file', variant.blob, variant.key.split('/').pop() || 'favicon.png')
+      formData.append('key', variant.key)
+
+      const res = await fetch('/api/admin/restore-image', {
+        method: 'POST',
+        headers: { 'X-Admin-Key': adminKey.value },
+        body: formData
+      })
+
+      if (!res.ok) {
+        throw new Error(`Failed to upload ${variant.key}`)
+      }
+    }
+
+    // Update metadata
+    faviconData.value.hasCustomFavicon = true
+    await saveFavicon()
+
+    message.value = { type: 'success', text: 'Favicon uploaded and all variants generated successfully' }
+  } catch (err) {
+    logger.error('Favicon upload failed', { error: err instanceof Error ? err.message : String(err) })
+    message.value = { type: 'error', text: 'Failed to upload favicon' }
+  } finally {
+    uploadingFavicon.value = false
+    input.value = ''
+  }
+}
+
+async function removeFavicon() {
+  loading.value = true
+  message.value = null
+  try {
+    const res = await fetch('/api/admin/favicon', {
+      method: 'DELETE',
+      headers: { 'X-Admin-Key': adminKey.value }
+    })
+
+    if (res.ok) {
+      faviconData.value.hasCustomFavicon = false
+      faviconPreviewVariants.value = []
+      message.value = { type: 'success', text: 'Custom favicon removed' }
+    } else {
+      message.value = { type: 'error', text: 'Failed to remove favicon' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to remove favicon' }
   } finally {
     loading.value = false
   }
@@ -888,6 +1009,17 @@ onMounted(() => {
             ]"
           >
             About
+          </button>
+          <button
+            @click="activeTab = 'favicon'"
+            :class="[
+              'px-4 py-2 rounded-lg font-medium',
+              activeTab === 'favicon'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            ]"
+          >
+            Favicon
           </button>
           <button
             @click="activeTab = 'backup'"
@@ -1576,6 +1708,136 @@ onMounted(() => {
             class="w-full bg-neutral-900 text-white py-3 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50"
           >
             {{ loading ? 'Saving...' : 'Save About' }}
+          </button>
+        </div>
+
+        <!-- Favicon Editor -->
+        <div v-if="activeTab === 'favicon'" class="space-y-6">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Favicon</h2>
+            <p class="text-sm text-neutral-500 mb-6">Upload a source image (minimum 512x512, square preferred) to generate all favicon variants for browsers, iOS, and Android.</p>
+
+            <!-- Current Status -->
+            <div class="mb-6 p-4 rounded-lg" :class="faviconData.hasCustomFavicon ? 'bg-green-50 border border-green-200' : 'bg-neutral-50 border border-neutral-200'">
+              <p class="text-sm font-medium" :class="faviconData.hasCustomFavicon ? 'text-green-800' : 'text-neutral-600'">
+                {{ faviconData.hasCustomFavicon ? 'Custom favicon is active' : 'No custom favicon set (using browser defaults)' }}
+              </p>
+            </div>
+
+            <!-- Preview Grid -->
+            <div v-if="faviconData.hasCustomFavicon" class="mb-6">
+              <span class="text-sm text-neutral-600 block mb-3">Current Variants</span>
+              <div class="grid grid-cols-3 gap-4">
+                <div class="text-center">
+                  <div class="inline-block border border-neutral-200 rounded p-2 bg-white">
+                    <img :src="'/api/images/favicon/favicon-16x16.png'" alt="16x16" class="block" style="width: 16px; height: 16px; image-rendering: pixelated;" />
+                  </div>
+                  <p class="text-xs text-neutral-400 mt-1">16x16</p>
+                </div>
+                <div class="text-center">
+                  <div class="inline-block border border-neutral-200 rounded p-2 bg-white">
+                    <img :src="'/api/images/favicon/favicon-32x32.png'" alt="32x32" class="block" style="width: 32px; height: 32px;" />
+                  </div>
+                  <p class="text-xs text-neutral-400 mt-1">32x32</p>
+                </div>
+                <div class="text-center">
+                  <div class="inline-block border border-neutral-200 rounded p-2 bg-white">
+                    <img :src="'/api/images/favicon/apple-touch-icon.png'" alt="180x180" class="block" style="width: 60px; height: 60px;" />
+                  </div>
+                  <p class="text-xs text-neutral-400 mt-1">180x180 (iOS)</p>
+                </div>
+                <div class="text-center">
+                  <div class="inline-block border border-neutral-200 rounded p-2 bg-white">
+                    <img :src="`/api/images/favicon/android-chrome-192x192.png`" alt="192x192" class="block" style="width: 64px; height: 64px;" />
+                  </div>
+                  <p class="text-xs text-neutral-400 mt-1">192x192 (Android)</p>
+                </div>
+                <div class="text-center">
+                  <div class="inline-block border border-neutral-200 rounded p-2 bg-white">
+                    <img :src="`/api/images/favicon/android-chrome-512x512.png`" alt="512x512" class="block" style="width: 80px; height: 80px;" />
+                  </div>
+                  <p class="text-xs text-neutral-400 mt-1">512x512 (PWA)</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload -->
+            <div class="mb-6">
+              <span class="text-sm text-neutral-600 block mb-2">{{ faviconData.hasCustomFavicon ? 'Replace Favicon' : 'Upload Source Image' }}</span>
+              <div class="flex items-center gap-3">
+                <label class="cursor-pointer">
+                  <span
+                    :class="[
+                      'inline-block text-sm px-3 py-1.5 rounded border',
+                      uploadingFavicon
+                        ? 'bg-neutral-100 text-neutral-400 border-neutral-200'
+                        : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
+                    ]"
+                  >
+                    {{ uploadingFavicon ? 'Generating variants...' : 'Choose Image' }}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    class="hidden"
+                    :disabled="uploadingFavicon"
+                    @change="uploadFavicon"
+                  />
+                </label>
+                <span class="text-xs text-neutral-400">JPEG, PNG, or WebP. Min 512x512, square preferred.</span>
+              </div>
+            </div>
+
+            <!-- Remove Button -->
+            <div v-if="faviconData.hasCustomFavicon" class="mb-6">
+              <button
+                @click="removeFavicon"
+                :disabled="loading"
+                class="text-sm bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 disabled:opacity-50"
+              >
+                Remove Custom Favicon
+              </button>
+            </div>
+
+            <!-- Settings -->
+            <div class="border-t border-neutral-200 pt-6 space-y-4">
+              <h3 class="font-medium">Web Manifest Settings</h3>
+              <p class="text-sm text-neutral-500">These settings are used in the web app manifest for Android/PWA.</p>
+
+              <label class="block">
+                <span class="text-sm text-neutral-600">Site Name</span>
+                <input
+                  v-model="faviconData.siteName"
+                  class="mt-1 block w-full rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none"
+                  placeholder="My Food Truck"
+                />
+              </label>
+
+              <label class="block">
+                <span class="text-sm text-neutral-600">Theme Color</span>
+                <div class="flex items-center gap-3 mt-1">
+                  <input
+                    v-model="faviconData.themeColor"
+                    type="color"
+                    class="w-10 h-10 rounded border border-neutral-300 cursor-pointer"
+                  />
+                  <input
+                    v-model="faviconData.themeColor"
+                    type="text"
+                    class="flex-1 rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none font-mono text-sm"
+                    placeholder="#ffffff"
+                  />
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <button
+            @click="saveFavicon"
+            :disabled="loading"
+            class="w-full bg-neutral-900 text-white py-3 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50"
+          >
+            {{ loading ? 'Saving...' : 'Save Favicon Settings' }}
           </button>
         </div>
 

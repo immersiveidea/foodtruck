@@ -73,3 +73,9 @@ export interface AboutContent {
   heading: string
   paragraphs: string[]
 }
+
+export interface FaviconContent {
+  hasCustomFavicon: boolean
+  siteName: string
+  themeColor: string
+}

@@ -18,6 +18,7 @@ interface BackupData {
     bookings: unknown
     hero: unknown
     about: unknown
+    favicon: unknown
   }
   imageKeys: string[]
 }
@@ -30,12 +31,13 @@ export const onRequestGet: PagesFunction<Env, string, ContextData> = async (cont
     logger.info('Creating backup')
 
     // Get all KV content
-    const [menu, schedule, bookings, hero, about] = await Promise.all([
+    const [menu, schedule, bookings, hero, about, favicon] = await Promise.all([
       context.env.CONTENT.get('menu', 'json'),
       context.env.CONTENT.get('schedule', 'json'),
       context.env.CONTENT.get('bookings', 'json'),
       context.env.CONTENT.get('hero', 'json'),
-      context.env.CONTENT.get('about', 'json')
+      context.env.CONTENT.get('about', 'json'),
+      context.env.CONTENT.get('favicon', 'json')
     ])
 
     // List all images in R2
@@ -50,7 +52,8 @@ export const onRequestGet: PagesFunction<Env, string, ContextData> = async (cont
         schedule: schedule ?? null,
         bookings: bookings ?? null,
         hero: hero ?? null,
-        about: about ?? null
+        about: about ?? null,
+        favicon: favicon ?? null
       },
       imageKeys
     }

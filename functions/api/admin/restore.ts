@@ -15,6 +15,7 @@ interface RestoreContent {
   bookings?: unknown
   hero?: unknown
   about?: unknown
+  favicon?: unknown
 }
 
 interface RestoreRequest {
@@ -63,6 +64,9 @@ export const onRequestPost: PagesFunction<Env, string, ContextData> = async (con
     }
     if (content.about !== undefined) {
       puts.push(context.env.CONTENT.put('about', JSON.stringify(content.about)))
+    }
+    if (content.favicon !== undefined) {
+      puts.push(context.env.CONTENT.put('favicon', JSON.stringify(content.favicon)))
     }
 
     await Promise.all(puts)
