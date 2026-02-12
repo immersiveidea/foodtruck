@@ -1,6 +1,12 @@
+import type { Logger } from '../../lib/logger'
+
 interface Env {
   CONTENT: KVNamespace
   IMAGES: R2Bucket
+}
+
+interface ContextData extends Record<string, unknown> {
+  logger: Logger
 }
 
 interface BackupData {
@@ -17,8 +23,12 @@ interface BackupData {
 }
 
 // GET /api/admin/backup - Returns all content and list of image keys
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<Env, string, ContextData> = async (context) => {
+  const logger = context.data.logger.child({ operation: 'createBackup' })
+
   try {
+    logger.info('Creating backup')
+
     // Get all KV content
     const [menu, schedule, bookings, hero, about] = await Promise.all([
       context.env.CONTENT.get('menu', 'json'),
@@ -45,9 +55,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       imageKeys
     }
 
+    logger.info('Backup created', { imageCount: imageKeys.length })
     return Response.json(backup)
   } catch (error) {
-    console.error('Backup error:', error)
+    logger.error('Backup failed', { error: error instanceof Error ? error.message : String(error) })
     return Response.json({ error: 'Failed to create backup' }, { status: 500 })
   }
 }

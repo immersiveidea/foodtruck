@@ -1,6 +1,12 @@
+import type { Logger } from '../../lib/logger'
+
 interface Env {
   CONTENT: KVNamespace
   IMAGES: R2Bucket
+}
+
+interface ContextData extends Record<string, unknown> {
+  logger: Logger
 }
 
 interface RestoreContent {
@@ -17,11 +23,14 @@ interface RestoreRequest {
 }
 
 // POST /api/admin/restore - Restores KV content
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunction<Env, string, ContextData> = async (context) => {
+  const logger = context.data.logger.child({ operation: 'restoreBackup' })
+
   try {
     const body = await context.request.json() as RestoreRequest
 
     if (!body.content) {
+      logger.warn('Restore attempted without content')
       return Response.json({ error: 'No content provided' }, { status: 400 })
     }
 
@@ -29,10 +38,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     // Optionally clear existing images before restore
     if (clearExistingImages) {
+      logger.info('Clearing existing images')
       const imageList = await context.env.IMAGES.list()
       await Promise.all(
         imageList.objects.map(obj => context.env.IMAGES.delete(obj.key))
       )
+      logger.info('Cleared existing images', { count: imageList.objects.length })
     }
 
     // Restore all KV content
@@ -56,13 +67,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     await Promise.all(puts)
 
+    const restoredKeys = Object.keys(content).filter(k => content[k as keyof RestoreContent] !== undefined)
+    logger.info('Content restored', { restoredKeys })
+
     return Response.json({
       success: true,
       message: 'Content restored successfully',
-      restoredKeys: Object.keys(content).filter(k => content[k as keyof RestoreContent] !== undefined)
+      restoredKeys
     })
   } catch (error) {
-    console.error('Restore error:', error)
+    logger.error('Restore failed', { error: error instanceof Error ? error.message : String(error) })
     return Response.json({ error: 'Failed to restore backup' }, { status: 500 })
   }
 }

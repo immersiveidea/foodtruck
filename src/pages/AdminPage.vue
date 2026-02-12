@@ -8,6 +8,9 @@ import TimeRangePicker from '../components/TimeRangePicker.vue'
 import MapPicker from '../components/MapPicker.vue'
 import type { AddressSuggestion } from '../composables/useAddressSearch'
 import { formatDayOfWeek, formatDisplayDate, formatTimeRange, formatTimestamp } from '../composables/useDateTimeFormat'
+import { useLogger } from '../composables/useLogger'
+
+const logger = useLogger('AdminPage')
 
 const adminKey = ref(localStorage.getItem('adminKey') || '')
 const uploadingItemIndex = ref<number | null>(null)
@@ -426,8 +429,8 @@ async function deleteImageFromR2(key: string) {
       method: 'DELETE',
       headers: { 'X-Admin-Key': adminKey.value }
     })
-  } catch {
-    console.error('Failed to delete image from R2')
+  } catch (e) {
+    logger.error('Failed to delete image from R2', { key, error: e instanceof Error ? e.message : String(e) })
   }
 }
 
@@ -634,7 +637,7 @@ async function createBackup() {
           zip.file(`images/${key}`, blob)
         }
       } catch (imgErr) {
-        console.warn(`Failed to download image ${key}:`, imgErr)
+        logger.warn('Failed to download image', { key, error: imgErr instanceof Error ? imgErr.message : String(imgErr) })
       }
     }
 
@@ -656,7 +659,7 @@ async function createBackup() {
 
     message.value = { type: 'success', text: 'Backup downloaded successfully' }
   } catch (error) {
-    console.error('Backup error:', error)
+    logger.error('Backup failed', { error: error instanceof Error ? error.message : String(error) })
     message.value = { type: 'error', text: 'Failed to create backup' }
   } finally {
     backupLoading.value = false
@@ -732,7 +735,7 @@ async function restoreBackup() {
             body: formData
           })
         } catch (imgErr) {
-          console.warn(`Failed to restore image ${key}:`, imgErr)
+          logger.warn('Failed to restore image', { key, error: imgErr instanceof Error ? imgErr.message : String(imgErr) })
         }
       }
     }
@@ -744,7 +747,7 @@ async function restoreBackup() {
     message.value = { type: 'success', text: 'Backup restored successfully' }
     restoreFile.value = null
   } catch (error) {
-    console.error('Restore error:', error)
+    logger.error('Restore failed', { error: error instanceof Error ? error.message : String(error) })
     message.value = { type: 'error', text: `Failed to restore backup: ${error instanceof Error ? error.message : 'Unknown error'}` }
   } finally {
     backupLoading.value = false
