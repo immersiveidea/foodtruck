@@ -12,6 +12,11 @@ const router = createRouter({
       component: HomePage
     },
     {
+      path: '/menu/:categoryId?/:itemSlug?',
+      name: 'menu',
+      component: HomePage
+    },
+    {
       path: '/admin',
       name: 'admin',
       component: AdminPage
@@ -21,7 +26,19 @@ const router = createRouter({
       name: 'book',
       component: BookingPage
     }
-  ]
+  ],
+  scrollBehavior(to, _from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    }
+    if (to.hash) {
+      return { el: to.hash, behavior: 'smooth' }
+    }
+    if (to.name === 'menu') {
+      return { el: '#menu', behavior: 'smooth' }
+    }
+    return { top: 0 }
+  }
 })
 
 export default router

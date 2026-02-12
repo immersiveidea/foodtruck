@@ -34,9 +34,9 @@ const backgroundStyle = computed(() => {
       <nav class="flex items-center justify-between px-4 py-4 md:px-8">
         <span class="font-display text-xl font-bold tracking-tight">{{ hero.title }}</span>
         <div class="hidden md:flex gap-6 text-sm font-medium font-body">
-          <a href="#about" class="hover:text-white/70 transition-colors">About</a>
-          <a href="#menu" class="hover:text-white/70 transition-colors">Menu</a>
-          <a href="#schedule" class="hover:text-white/70 transition-colors">Find Us</a>
+          <router-link :to="{ path: '/', hash: '#about' }" class="hover:text-white/70 transition-colors">About</router-link>
+          <router-link :to="{ path: '/', hash: '#menu' }" class="hover:text-white/70 transition-colors">Menu</router-link>
+          <router-link :to="{ path: '/', hash: '#schedule' }" class="hover:text-white/70 transition-colors">Find Us</router-link>
           <router-link to="/book" class="hover:text-white/70 transition-colors">Book Us</router-link>
         </div>
         <button class="md:hidden p-2" aria-label="Menu">

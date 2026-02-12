@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useMenu } from '../composables/useMenu'
+import { toSlug } from '../utils/slug'
 
 const { menu } = useMenu()
+const route = useRoute()
+const router = useRouter()
 const activeCategory = ref<string>('')
 
-// Set initial active category when menu loads
+// Set active category from route param or default to first
 watch(
-  () => menu.value.categories,
-  (categories) => {
-    if (categories.length > 0 && !activeCategory.value) {
+  () => [menu.value.categories, route.params.categoryId] as const,
+  ([categories, categoryId]) => {
+    if (categories.length === 0) return
+    if (categoryId && categories.some(c => c.id === categoryId)) {
+      activeCategory.value = categoryId as string
+    } else if (!activeCategory.value) {
       activeCategory.value = categories[0]!.id
     }
   },
@@ -19,6 +26,29 @@ watch(
 const activeItems = computed(() => {
   return menu.value.categories.find(c => c.id === activeCategory.value)?.items ?? []
 })
+
+function selectCategory(categoryId: string) {
+  activeCategory.value = categoryId
+  if (route.name === 'menu') {
+    router.replace({ name: 'menu', params: { categoryId } })
+  }
+}
+
+// Scroll to item card when itemSlug param is present
+watch(
+  () => [route.params.itemSlug, activeItems.value] as const,
+  async ([itemSlug, items]) => {
+    if (!itemSlug || items.length === 0) return
+    await nextTick()
+    const el = document.getElementById('menu-item-' + itemSlug)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('ring-2', 'ring-neutral-400')
+      setTimeout(() => el.classList.remove('ring-2', 'ring-neutral-400'), 2000)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -31,7 +61,7 @@ const activeItems = computed(() => {
         <button
           v-for="category in menu.categories"
           :key="category.id"
-          @click="activeCategory = category.id"
+          @click="selectCategory(category.id)"
           :class="[
             'font-body text-sm font-medium px-4 py-2 rounded-full border transition-all',
             activeCategory === category.id
@@ -48,7 +78,8 @@ const activeItems = computed(() => {
         <div
           v-for="item in activeItems"
           :key="item.name"
-          class="bg-white rounded-lg shadow-sm border border-neutral-100 overflow-hidden"
+          :id="'menu-item-' + toSlug(item.name)"
+          class="bg-white rounded-lg shadow-sm border border-neutral-100 overflow-hidden transition-shadow"
         >
           <div v-if="item.imageKey" class="relative h-40 bg-neutral-100 overflow-hidden">
             <img
@@ -64,7 +95,12 @@ const activeItems = computed(() => {
           </div>
           <div class="p-5">
             <div class="flex justify-between items-start mb-2">
-              <h3 class="font-display text-lg font-semibold text-neutral-900">{{ item.name }}</h3>
+              <router-link
+                :to="{ name: 'menu', params: { categoryId: activeCategory, itemSlug: toSlug(item.name) } }"
+                class="font-display text-lg font-semibold text-neutral-900 hover:text-neutral-600 transition-colors"
+              >
+                {{ item.name }}
+              </router-link>
               <span class="font-display text-lg font-semibold text-neutral-900">${{ item.price.toFixed(2) }}</span>
             </div>
             <p v-if="item.description" class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
