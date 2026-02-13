@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useHero } from '../composables/useHero'
+import { useSocialLinks } from '../composables/useSocialLinks'
+import SocialIcon from './SocialIcon.vue'
 
 const { hero } = useHero()
+const { socialLinks } = useSocialLinks()
+
+const headerLinks = computed(() =>
+  socialLinks.value.links.filter(l => l.showInHeader)
+)
 
 const backgroundStyle = computed(() => {
   const imageUrl = hero.value.imageKey
@@ -33,11 +40,24 @@ const backgroundStyle = computed(() => {
     <div class="relative">
       <nav class="flex items-center justify-between px-4 py-4 md:px-8">
         <span class="font-display text-xl font-bold tracking-tight">{{ hero.title }}</span>
-        <div class="hidden md:flex gap-6 text-sm font-medium font-body">
+        <div class="hidden md:flex items-center gap-6 text-sm font-medium font-body">
           <router-link :to="{ path: '/', hash: '#about' }" class="hover:text-white/70 transition-colors">About</router-link>
           <router-link :to="{ path: '/', hash: '#menu' }" class="hover:text-white/70 transition-colors">Menu</router-link>
           <router-link :to="{ path: '/', hash: '#schedule' }" class="hover:text-white/70 transition-colors">Find Us</router-link>
           <router-link to="/book" class="hover:text-white/70 transition-colors">Book Us</router-link>
+          <template v-if="headerLinks.length > 0">
+            <span class="text-white/30">|</span>
+            <a
+              v-for="link in headerLinks"
+              :key="link.platform"
+              :href="link.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hover:text-white/70 transition-colors"
+            >
+              <SocialIcon :platform="link.platform" :size="16" />
+            </a>
+          </template>
         </div>
         <button class="md:hidden p-2" aria-label="Menu">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -296,6 +296,32 @@ components:
             - We started YoYo Bubble Tea with a simple mission...
             - Every drink is made fresh to order...
 
+    SocialLink:
+      type: object
+      required:
+        - platform
+        - url
+      properties:
+        platform:
+          type: string
+          description: Simple-icons slug for the platform
+          example: instagram
+        url:
+          type: string
+          format: uri
+          description: Full URL to the social media profile
+          example: https://instagram.com/yoyobubbleteaco
+
+    SocialLinksContent:
+      type: object
+      required:
+        - links
+      properties:
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialLink'
+
     SuccessResponse:
       type: object
       required:
@@ -394,6 +420,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AboutContent'
+
+  /api/sociallinks:
+    get:
+      summary: Get social links
+      description: Returns configured social media links
+      tags:
+        - Public
+      responses:
+        '200':
+          description: Social links content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialLinksContent'
 
   /api/bookings:
     post:
@@ -629,6 +669,52 @@ paths:
       responses:
         '200':
           description: About content updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+
+  /api/admin/sociallinks:
+    get:
+      summary: Get social links (admin)
+      description: Returns the configured social media links
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      responses:
+        '200':
+          description: Social links content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialLinksContent'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Update social links
+      description: Replace the social media links configuration
+      tags:
+        - Admin
+      security:
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialLinksContent'
+      responses:
+        '200':
+          description: Social links updated successfully
           content:
             application/json:
               schema:

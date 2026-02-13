@@ -80,3 +80,14 @@ export interface FaviconContent {
   themeColor: string
   metaDescription: string
 }
+
+export interface SocialLink {
+  platform: string   // simple-icons slug e.g. 'facebook', 'instagram', 'tiktok'
+  url: string        // full URL e.g. 'https://facebook.com/yoyobubbleteaco'
+  showInHeader: boolean
+  showInFooter: boolean
+}
+
+export interface SocialLinksContent {
+  links: SocialLink[]
+}

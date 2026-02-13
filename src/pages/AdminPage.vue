@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import imageCompression from 'browser-image-compression'
 import JSZip from 'jszip'
-import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem, FaviconContent } from '../types'
+import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem, FaviconContent, SocialLinksContent } from '../types'
 import { validateSourceImage, validateImageDimensions, generateFaviconVariants } from '../lib/favicon/generator'
 import type { FaviconVariant } from '../lib/favicon/generator'
 import AddressAutocomplete from '../components/AddressAutocomplete.vue'
@@ -17,7 +17,7 @@ const logger = useLogger('AdminPage')
 const adminKey = ref(localStorage.getItem('adminKey') || '')
 const uploadingItemIndex = ref<number | null>(null)
 const isAuthenticated = ref(false)
-const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'hero' | 'about' | 'favicon' | 'backup'>('menu')
+const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'hero' | 'about' | 'social' | 'favicon' | 'backup'>('menu')
 const loading = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -42,6 +42,21 @@ const heroPreviewScale = ref(1)
 
 // About state
 const aboutData = ref<AboutContent>({ heading: '', paragraphs: [] })
+
+// Social links state
+const socialLinksData = ref<SocialLinksContent>({ links: [] })
+const socialPlatforms = [
+  { slug: 'facebook', label: 'Facebook' },
+  { slug: 'instagram', label: 'Instagram' },
+  { slug: 'tiktok', label: 'TikTok' },
+  { slug: 'x', label: 'X (Twitter)' },
+  { slug: 'youtube', label: 'YouTube' },
+  { slug: 'snapchat', label: 'Snapchat' },
+  { slug: 'pinterest', label: 'Pinterest' },
+  { slug: 'threads', label: 'Threads' },
+  { slug: 'yelp', label: 'Yelp' },
+  { slug: 'linktree', label: 'Linktree' },
+]
 
 // Favicon state
 const faviconData = ref<FaviconContent>({ hasCustomFavicon: false, siteName: '', themeColor: '#ffffff', metaDescription: '' })
@@ -90,13 +105,14 @@ async function authenticate() {
 async function loadData() {
   loading.value = true
   try {
-    const [menuRes, scheduleRes, bookingsRes, heroRes, aboutRes, faviconRes] = await Promise.all([
+    const [menuRes, scheduleRes, bookingsRes, heroRes, aboutRes, faviconRes, socialLinksRes] = await Promise.all([
       fetch('/api/admin/menu', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/schedule', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/bookings', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/hero', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/about', { headers: { 'X-Admin-Key': adminKey.value } }),
-      fetch('/api/admin/favicon', { headers: { 'X-Admin-Key': adminKey.value } })
+      fetch('/api/admin/favicon', { headers: { 'X-Admin-Key': adminKey.value } }),
+      fetch('/api/admin/sociallinks', { headers: { 'X-Admin-Key': adminKey.value } })
     ])
 
     if (menuRes.ok) {
@@ -132,6 +148,13 @@ async function loadData() {
     if (faviconRes.ok) {
       const data = await faviconRes.json()
       faviconData.value = data
+    }
+
+    if (socialLinksRes.ok) {
+      const data = await socialLinksRes.json()
+      if (data.links) {
+        socialLinksData.value = data
+      }
     }
   } catch {
     message.value = { type: 'error', text: 'Failed to load data' }
@@ -330,6 +353,39 @@ async function saveAbout() {
   } finally {
     loading.value = false
   }
+}
+
+async function saveSocialLinks() {
+  loading.value = true
+  message.value = null
+  try {
+    const res = await fetch('/api/admin/sociallinks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': adminKey.value
+      },
+      body: JSON.stringify(socialLinksData.value)
+    })
+
+    if (res.ok) {
+      message.value = { type: 'success', text: 'Social links saved successfully' }
+    } else {
+      message.value = { type: 'error', text: 'Failed to save social links' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to save social links' }
+  } finally {
+    loading.value = false
+  }
+}
+
+function addSocialLink() {
+  socialLinksData.value.links.push({ platform: 'facebook', url: '', showInHeader: false, showInFooter: true })
+}
+
+function removeSocialLink(index: number) {
+  socialLinksData.value.links.splice(index, 1)
 }
 
 // Favicon functions
@@ -1009,6 +1065,17 @@ onMounted(() => {
             ]"
           >
             About
+          </button>
+          <button
+            @click="activeTab = 'social'"
+            :class="[
+              'px-4 py-2 rounded-lg font-medium',
+              activeTab === 'social'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            ]"
+          >
+            Social
           </button>
           <button
             @click="activeTab = 'favicon'"
@@ -1708,6 +1775,76 @@ onMounted(() => {
             class="w-full bg-neutral-900 text-white py-3 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50"
           >
             {{ loading ? 'Saving...' : 'Save About' }}
+          </button>
+        </div>
+
+        <!-- Social Links Editor -->
+        <div v-if="activeTab === 'social'" class="space-y-6">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Social Links</h2>
+            <p class="text-sm text-neutral-500 mb-6">Manage the social media links displayed in the site footer.</p>
+
+            <div class="space-y-4">
+              <div
+                v-for="(link, index) in socialLinksData.links"
+                :key="index"
+                class="border border-neutral-200 rounded-lg p-4"
+              >
+                <div class="flex items-center gap-3">
+                  <select
+                    v-model="link.platform"
+                    class="rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none text-sm"
+                  >
+                    <option v-for="p in socialPlatforms" :key="p.slug" :value="p.slug">
+                      {{ p.label }}
+                    </option>
+                  </select>
+                  <input
+                    v-model="link.url"
+                    type="url"
+                    class="flex-1 rounded border border-neutral-300 px-3 py-2 focus:border-neutral-400 focus:outline-none text-sm"
+                    placeholder="https://..."
+                  />
+                  <button
+                    @click="removeSocialLink(index)"
+                    class="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div class="flex items-center gap-4 mt-2 ml-1">
+                  <label class="flex items-center gap-1.5 text-sm text-neutral-600">
+                    <input type="checkbox" v-model="link.showInHeader" class="rounded border-neutral-300" />
+                    Header
+                  </label>
+                  <label class="flex items-center gap-1.5 text-sm text-neutral-600">
+                    <input type="checkbox" v-model="link.showInFooter" class="rounded border-neutral-300" />
+                    Footer
+                  </label>
+                </div>
+              </div>
+
+              <p v-if="socialLinksData.links.length === 0" class="text-neutral-500 text-center py-4 text-sm">
+                No social links configured. Click "Add Link" to create one.
+              </p>
+            </div>
+
+            <div class="mt-4">
+              <button
+                @click="addSocialLink"
+                class="text-sm bg-neutral-900 text-white px-3 py-1 rounded hover:bg-neutral-800"
+              >
+                Add Link
+              </button>
+            </div>
+          </div>
+
+          <button
+            @click="saveSocialLinks"
+            :disabled="loading"
+            class="w-full bg-neutral-900 text-white py-3 rounded-lg font-medium hover:bg-neutral-800 disabled:opacity-50"
+          >
+            {{ loading ? 'Saving...' : 'Save Social Links' }}
           </button>
         </div>
 
