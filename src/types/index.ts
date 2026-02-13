@@ -28,6 +28,8 @@ export interface ScheduleLocation {
   lat: number
   lng: number
   duration?: string      // Optional descriptive duration (e.g., "4 hours")
+  private?: boolean      // If true, location details are hidden on public site
+  bookingId?: string     // Links this event to a confirmed booking
   // Legacy fields for backward compatibility
   day?: string           // Deprecated: computed from date
   time?: string          // Deprecated: use startTime/endTime
@@ -50,6 +52,7 @@ export interface BookingRequest {
   eventType: string
   guestCount: number
   message?: string
+  private?: boolean      // If true, this is a private event
   status: BookingStatus
   createdAt: string
   adminNotes?: string

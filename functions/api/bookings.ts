@@ -14,6 +14,7 @@ interface BookingSubmission {
   eventType: string
   guestCount: number
   message?: string
+  private?: boolean
 }
 
 interface BookingRequest extends BookingSubmission {
@@ -62,6 +63,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       eventType: body.eventType,
       guestCount: body.guestCount,
       message: body.message,
+      private: body.private || false,
       status: 'pending',
       createdAt: new Date().toISOString()
     }

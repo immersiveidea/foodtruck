@@ -133,6 +133,14 @@ components:
           type: string
           description: Optional descriptive duration (e.g., "4 hours")
           example: "4 hours"
+        private:
+          type: boolean
+          description: If true, location details are hidden on public site
+          default: false
+        bookingId:
+          type: string
+          description: Links this schedule event to a confirmed booking request
+          example: booking-1706123456789-abc1234
         day:
           type: string
           description: "Deprecated: Day of week is now computed from date"
@@ -192,6 +200,10 @@ components:
         message:
           type: string
           example: We'd love to have bubble tea for our company picnic!
+        private:
+          type: boolean
+          description: If true, this is a private event
+          default: false
 
     BookingStatus:
       type: string
@@ -241,6 +253,10 @@ components:
         adminNotes:
           type: string
           example: Called customer to confirm details
+        private:
+          type: boolean
+          description: If true, this is a private event
+          default: false
 
     HeroContent:
       type: object

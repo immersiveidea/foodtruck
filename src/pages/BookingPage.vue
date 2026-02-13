@@ -17,7 +17,8 @@ const form = reactive({
   lng: null as number | null,
   eventType: '',
   guestCount: null as number | null,
-  message: ''
+  message: '',
+  private: false
 })
 
 function onAddressSelect(suggestion: AddressSuggestion) {
@@ -218,6 +219,15 @@ async function submitForm() {
                 class="mt-1 block w-full rounded-lg border border-neutral-300 px-4 py-2 focus:border-neutral-500 focus:outline-none"
                 placeholder="Any additional information about your event..."
               ></textarea>
+            </label>
+
+            <label class="flex items-center gap-2">
+              <input
+                v-model="form.private"
+                type="checkbox"
+                class="rounded border-neutral-300"
+              />
+              <span class="text-sm text-neutral-600">This is a private event</span>
             </label>
           </div>
 

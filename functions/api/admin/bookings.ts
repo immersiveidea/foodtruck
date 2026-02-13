@@ -14,6 +14,7 @@ interface BookingRequest {
   eventType: string
   guestCount: number
   message?: string
+  private?: boolean
   status: 'pending' | 'confirmed' | 'denied'
   createdAt: string
   adminNotes?: string
@@ -23,6 +24,7 @@ interface UpdateRequest {
   id: string
   status: 'pending' | 'confirmed' | 'denied'
   adminNotes?: string
+  private?: boolean
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -55,6 +57,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     bookings[index].status = body.status
     if (body.adminNotes !== undefined) {
       bookings[index].adminNotes = body.adminNotes
+    }
+    if (body.private !== undefined) {
+      bookings[index].private = body.private
     }
 
     await context.env.CONTENT.put('bookings', JSON.stringify(bookings))

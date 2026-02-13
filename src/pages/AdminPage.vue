@@ -188,20 +188,23 @@ async function saveMenu() {
   }
 }
 
+async function persistSchedule(): Promise<boolean> {
+  const res = await fetch('/api/admin/schedule', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-Key': adminKey.value
+    },
+    body: JSON.stringify(scheduleData.value)
+  })
+  return res.ok
+}
+
 async function saveSchedule() {
   loading.value = true
   message.value = null
   try {
-    const res = await fetch('/api/admin/schedule', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Admin-Key': adminKey.value
-      },
-      body: JSON.stringify(scheduleData.value)
-    })
-
-    if (res.ok) {
+    if (await persistSchedule()) {
       message.value = { type: 'success', text: 'Schedule saved successfully' }
     } else {
       message.value = { type: 'error', text: 'Failed to save schedule' }
@@ -703,7 +706,8 @@ function addScheduleEvent() {
     address: '',
     lat: 40.48,
     lng: -104.90,
-    duration: ''
+    duration: '',
+    private: false
   }
 }
 
@@ -760,13 +764,19 @@ async function updateBookingStatus(booking: BookingRequest, status: 'pending' | 
       body: JSON.stringify({
         id: booking.id,
         status,
-        adminNotes: booking.adminNotes
+        adminNotes: booking.adminNotes,
+        private: booking.private
       })
     })
 
     if (res.ok) {
       booking.status = status
-      message.value = { type: 'success', text: 'Booking updated successfully' }
+      try {
+        await syncScheduleFromBooking(booking, status)
+        message.value = { type: 'success', text: 'Booking updated and schedule synced' }
+      } catch {
+        message.value = { type: 'error', text: 'Booking updated but failed to sync schedule' }
+      }
     } else {
       message.value = { type: 'error', text: 'Failed to update booking' }
     }
@@ -775,6 +785,54 @@ async function updateBookingStatus(booking: BookingRequest, status: 'pending' | 
   } finally {
     loading.value = false
   }
+}
+
+async function syncScheduleFromBooking(booking: BookingRequest, status: 'pending' | 'confirmed' | 'denied') {
+  const existingIndex = scheduleData.value.findIndex(e => e.bookingId === booking.id)
+
+  if (status === 'confirmed') {
+    if (existingIndex >= 0) {
+      // Update existing schedule event
+      const existing = scheduleData.value[existingIndex]!
+      existing.date = booking.eventDate
+      existing.startTime = booking.startTime
+      existing.endTime = booking.endTime
+      existing.location = booking.location
+      existing.address = booking.address
+      existing.private = booking.private || false
+    } else {
+      // Create new schedule event from booking
+      const newId = Math.max(0, ...scheduleData.value.map(e => e.id)) + 1
+      scheduleData.value.push({
+        id: newId,
+        date: booking.eventDate,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        location: booking.location,
+        address: booking.address,
+        lat: 40.48,
+        lng: -104.90,
+        private: booking.private || false,
+        bookingId: booking.id
+      })
+    }
+  } else {
+    // Remove schedule event linked to this booking
+    if (existingIndex >= 0) {
+      scheduleData.value.splice(existingIndex, 1)
+    } else {
+      return // Nothing to remove, skip the save
+    }
+  }
+
+  const ok = await persistSchedule()
+  if (!ok) {
+    throw new Error('Failed to save schedule')
+  }
+}
+
+async function saveBooking(booking: BookingRequest) {
+  await updateBookingStatus(booking, booking.status)
 }
 
 // formatTimestamp imported from useDateTimeFormat composable
@@ -1321,6 +1379,16 @@ onMounted(() => {
                     </span>
                   </label>
 
+                  <label class="flex items-center gap-2">
+                    <input
+                      v-model="editingEvent.private"
+                      type="checkbox"
+                      class="rounded border-neutral-300"
+                    />
+                    <span class="text-sm text-neutral-600">Private Event</span>
+                    <span class="text-xs text-neutral-400">(hides location on public site)</span>
+                  </label>
+
                   <TimeRangePicker
                     v-model:start-time="editingEvent.startTime"
                     v-model:end-time="editingEvent.endTime"
@@ -1417,6 +1485,7 @@ onMounted(() => {
                 <div>
                   <p class="font-medium">
                     {{ event.startTime ? formatDayOfWeek(event.date) : event.day }}, {{ event.startTime ? formatDisplayDate(event.date) : event.date }}
+                    <span v-if="event.private" class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800">Private</span>
                   </p>
                   <p class="text-sm text-neutral-500">
                     {{ event.location }} - {{ event.startTime ? formatTimeRange(event.startTime, event.endTime) : event.time }}
@@ -1538,6 +1607,17 @@ onMounted(() => {
                       <p class="text-neutral-500">Guest Count</p>
                       <p class="font-medium">{{ booking.guestCount }}</p>
                     </div>
+                    <div>
+                      <p class="text-neutral-500">Private Event</p>
+                      <label class="flex items-center gap-2 mt-1">
+                        <input
+                          v-model="booking.private"
+                          type="checkbox"
+                          class="rounded border-neutral-300"
+                        />
+                        <span class="text-sm font-medium">{{ booking.private ? 'Yes' : 'No' }}</span>
+                      </label>
+                    </div>
                     <div class="col-span-2">
                       <p class="text-neutral-500">Submitted</p>
                       <p class="font-medium">{{ formatTimestamp(booking.createdAt) }}</p>
@@ -1559,6 +1639,16 @@ onMounted(() => {
                         placeholder="Internal notes about this booking..."
                       ></textarea>
                     </label>
+                  </div>
+
+                  <div class="flex gap-2 mb-2">
+                    <button
+                      @click="saveBooking(booking)"
+                      :disabled="loading"
+                      class="flex-1 py-2 bg-neutral-900 text-white rounded hover:bg-neutral-800 disabled:opacity-50 text-sm font-medium"
+                    >
+                      Save
+                    </button>
                   </div>
 
                   <div class="flex gap-2">

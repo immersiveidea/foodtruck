@@ -25,7 +25,7 @@ watch(
 )
 
 const mapSrc = computed(() => {
-  if (!selectedLocation.value) return ''
+  if (!selectedLocation.value || selectedLocation.value.private) return ''
   const { lat, lng } = selectedLocation.value
   return `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01},${lat - 0.01},${lng + 0.01},${lat + 0.01}&layer=mapnik&marker=${lat},${lng}`
 })
@@ -79,7 +79,7 @@ function getTimeDisplay(loc: ScheduleLocation): string {
               <div>
                 <p class="font-display font-semibold">{{ getDayOfWeek(loc) }}, {{ getDisplayDate(loc) }}</p>
                 <p :class="selectedLocation?.id === loc.id ? 'text-neutral-300' : 'text-neutral-500'" class="font-body text-sm">
-                  {{ loc.location }}
+                  {{ loc.private ? 'Private Event' : loc.location }}
                 </p>
               </div>
               <span :class="selectedLocation?.id === loc.id ? 'text-neutral-300' : 'text-neutral-600'" class="font-body text-sm font-medium">
@@ -92,14 +92,18 @@ function getTimeDisplay(loc: ScheduleLocation): string {
         <!-- Map -->
         <div v-if="selectedLocation" class="bg-white rounded-lg overflow-hidden shadow-lg">
           <iframe
+            v-if="!selectedLocation.private"
             :src="mapSrc"
             class="w-full h-64 md:h-full min-h-[300px]"
             frameborder="0"
             loading="lazy"
           ></iframe>
+          <div v-else class="w-full h-64 md:h-full min-h-[300px] bg-neutral-100 flex items-center justify-center">
+            <p class="font-body text-neutral-400 text-lg">Private Event</p>
+          </div>
           <div class="p-4 border-t border-neutral-200">
-            <h3 class="font-display font-semibold text-neutral-800">{{ selectedLocation.location }}</h3>
-            <p class="font-body text-sm text-neutral-500">{{ selectedLocation.address }}</p>
+            <h3 class="font-display font-semibold text-neutral-800">{{ selectedLocation.private ? 'Private Event' : selectedLocation.location }}</h3>
+            <p v-if="!selectedLocation.private" class="font-body text-sm text-neutral-500">{{ selectedLocation.address }}</p>
             <p class="font-body text-sm text-neutral-600 font-medium mt-1">{{ getDayOfWeek(selectedLocation) }} · {{ getTimeDisplay(selectedLocation) }}</p>
             <p v-if="selectedLocation.duration" class="font-body text-xs text-neutral-400 mt-1">{{ selectedLocation.duration }}</p>
           </div>
