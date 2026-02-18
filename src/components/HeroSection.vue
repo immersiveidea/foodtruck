@@ -2,11 +2,13 @@
 import { computed } from 'vue'
 import { useHero } from '../composables/useHero'
 import { useSocialLinks } from '../composables/useSocialLinks'
+import { useSettings } from '../composables/useSettings'
 import SocialIcon from './SocialIcon.vue'
 import CartIcon from './CartIcon.vue'
 
 const { hero } = useHero()
 const { socialLinks } = useSocialLinks()
+const { settings } = useSettings()
 
 const headerLinks = computed(() =>
   socialLinks.value.links.filter(l => l.showInHeader)
@@ -59,9 +61,9 @@ const backgroundStyle = computed(() => {
               <SocialIcon :platform="link.platform" :size="16" />
             </a>
           </template>
-          <CartIcon />
+          <CartIcon v-if="settings.onlineOrderingEnabled" />
         </div>
-        <CartIcon class="md:hidden" />
+        <CartIcon v-if="settings.onlineOrderingEnabled" class="md:hidden" />
         <button class="md:hidden p-2" aria-label="Menu">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />

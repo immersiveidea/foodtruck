@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import imageCompression from 'browser-image-compression'
 import JSZip from 'jszip'
-import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem, FaviconContent, SocialLinksContent, Order, OrderStatus } from '../types'
+import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem, FaviconContent, SocialLinksContent, Order, OrderStatus, SiteSettings } from '../types'
 import { validateSourceImage, validateImageDimensions, generateFaviconVariants } from '../lib/favicon/generator'
 import type { FaviconVariant } from '../lib/favicon/generator'
 import AddressAutocomplete from '../components/AddressAutocomplete.vue'
@@ -37,6 +37,9 @@ const expandedBookingId = ref<string | null>(null)
 const ordersData = ref<Order[]>([])
 const expandedOrderId = ref<string | null>(null)
 const ordersFilter = ref<'all' | OrderStatus>('all')
+
+// Settings state
+const settingsData = ref<SiteSettings>({ onlineOrderingEnabled: false })
 
 // Hero state
 const heroData = ref<HeroContent>({ title: '', tagline: '', ctaText: '', ctaLink: '' })
@@ -110,11 +113,12 @@ async function authenticate() {
 async function loadData() {
   loading.value = true
   try {
-    const [menuRes, scheduleRes, bookingsRes, ordersRes, heroRes, aboutRes, faviconRes, socialLinksRes] = await Promise.all([
+    const [menuRes, scheduleRes, bookingsRes, ordersRes, settingsRes, heroRes, aboutRes, faviconRes, socialLinksRes] = await Promise.all([
       fetch('/api/admin/menu', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/schedule', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/bookings', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/orders', { headers: { 'X-Admin-Key': adminKey.value } }),
+      fetch('/api/admin/settings', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/hero', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/about', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/favicon', { headers: { 'X-Admin-Key': adminKey.value } }),
@@ -139,6 +143,10 @@ async function loadData() {
 
     if (ordersRes.ok) {
       ordersData.value = await ordersRes.json()
+    }
+
+    if (settingsRes.ok) {
+      settingsData.value = await settingsRes.json()
     }
 
     if (heroRes.ok) {
@@ -879,6 +887,35 @@ async function saveBooking(booking: BookingRequest) {
 }
 
 // formatTimestamp imported from useDateTimeFormat composable
+
+// Settings functions
+async function toggleOnlineOrdering() {
+  settingsData.value.onlineOrderingEnabled = !settingsData.value.onlineOrderingEnabled
+  loading.value = true
+  message.value = null
+  try {
+    const res = await fetch('/api/admin/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': adminKey.value
+      },
+      body: JSON.stringify(settingsData.value)
+    })
+
+    if (res.ok) {
+      message.value = { type: 'success', text: `Online ordering ${settingsData.value.onlineOrderingEnabled ? 'enabled' : 'disabled'}` }
+    } else {
+      settingsData.value.onlineOrderingEnabled = !settingsData.value.onlineOrderingEnabled
+      message.value = { type: 'error', text: 'Failed to update settings' }
+    }
+  } catch {
+    settingsData.value.onlineOrderingEnabled = !settingsData.value.onlineOrderingEnabled
+    message.value = { type: 'error', text: 'Failed to update settings' }
+  } finally {
+    loading.value = false
+  }
+}
 
 // Orders functions
 const filteredOrders = computed(() => {
@@ -1869,8 +1906,33 @@ onMounted(() => {
 
         <!-- Orders Manager -->
         <div v-if="activeTab === 'orders'" class="space-y-4">
+          <!-- Online Ordering Toggle -->
+          <div class="bg-white rounded-lg shadow p-6 flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold">Online Ordering</h2>
+              <p class="text-sm text-neutral-500 mt-1">
+                {{ settingsData.onlineOrderingEnabled ? 'Customers can place orders from the menu' : 'Ordering is hidden from customers' }}
+              </p>
+            </div>
+            <button
+              @click="toggleOnlineOrdering"
+              :disabled="loading"
+              :class="[
+                'relative inline-flex h-7 w-12 items-center rounded-full transition-colors',
+                settingsData.onlineOrderingEnabled ? 'bg-green-500' : 'bg-neutral-300'
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
+                  settingsData.onlineOrderingEnabled ? 'translate-x-6' : 'translate-x-1'
+                ]"
+              />
+            </button>
+          </div>
+
           <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold mb-4">Online Orders</h2>
+            <h2 class="text-lg font-semibold mb-4">Orders</h2>
 
             <!-- Status Filter -->
             <div class="flex flex-wrap gap-2 mb-6">

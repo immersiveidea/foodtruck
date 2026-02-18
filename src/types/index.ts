@@ -97,6 +97,10 @@ export interface SocialLinksContent {
   links: SocialLink[]
 }
 
+export interface SiteSettings {
+  onlineOrderingEnabled: boolean
+}
+
 export interface CartItem {
   categoryId: string
   itemName: string

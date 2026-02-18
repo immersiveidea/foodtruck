@@ -56,6 +56,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return Response.json({ success: false, error: 'Cart is empty' }, { status: 400 })
     }
 
+    // Check if online ordering is enabled
+    const settings = await context.env.CONTENT.get('settings', 'json') as { onlineOrderingEnabled?: boolean } | null
+    if (!settings?.onlineOrderingEnabled) {
+      return Response.json({ success: false, error: 'Online ordering is currently disabled' }, { status: 403 })
+    }
+
     // Load menu from KV to get authoritative prices
     const menuData = await context.env.CONTENT.get('menu', 'json') as MenuData | null
     if (!menuData || !menuData.categories) {
