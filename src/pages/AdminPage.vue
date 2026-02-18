@@ -1210,7 +1210,7 @@ onMounted(() => {
                     : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
                 ]"
               >
-                {{ category.name }}
+                {{ category.name }}{{ category.default ? ' ★' : '' }}
               </button>
             </div>
           </div>
@@ -1236,6 +1236,11 @@ onMounted(() => {
                 </button>
               </div>
             </div>
+
+            <label class="flex items-center gap-2 mb-4 text-sm text-neutral-600">
+              <input type="checkbox" v-model="selectedCategory.default" class="rounded" />
+              Show on initial load
+            </label>
 
             <div class="space-y-4">
               <div

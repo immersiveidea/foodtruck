@@ -7,25 +7,41 @@ import { toSlug } from '../utils/slug'
 const { menu } = useMenu()
 const route = useRoute()
 const router = useRouter()
-const activeCategory = ref<string>('')
+const activeCategory = ref<string | null>(null)
 
-// Set active category from route param or default to first
+const defaultCategories = computed(() => {
+  const cats = menu.value.categories
+  const defaults = cats.filter(c => c.default)
+  return defaults.length > 0 ? defaults : cats
+})
+
+const isDefaultView = computed(() => activeCategory.value === null)
+
+const singleCategoryItems = computed(() => {
+  return menu.value.categories.find(c => c.id === activeCategory.value)?.items ?? []
+})
+
+// Flat list of visible items for scroll-to-item logic
+const visibleItems = computed(() => {
+  if (isDefaultView.value) {
+    return defaultCategories.value.flatMap(c => c.items)
+  }
+  return singleCategoryItems.value
+})
+
+// Set active category from route param or default view
 watch(
   () => [menu.value.categories, route.params.categoryId] as const,
   ([categories, categoryId]) => {
     if (categories.length === 0) return
     if (categoryId && categories.some(c => c.id === categoryId)) {
       activeCategory.value = categoryId as string
-    } else if (!activeCategory.value) {
-      activeCategory.value = categories[0]!.id
+    } else if (!categoryId) {
+      activeCategory.value = null
     }
   },
   { immediate: true }
 )
-
-const activeItems = computed(() => {
-  return menu.value.categories.find(c => c.id === activeCategory.value)?.items ?? []
-})
 
 function selectCategory(categoryId: string) {
   activeCategory.value = categoryId
@@ -36,7 +52,7 @@ function selectCategory(categoryId: string) {
 
 // Scroll to item card when itemSlug param is present
 watch(
-  () => [route.params.itemSlug, activeItems.value] as const,
+  () => [route.params.itemSlug, visibleItems.value] as const,
   async ([itemSlug, items]) => {
     if (!itemSlug || items.length === 0) return
     await nextTick()
@@ -73,10 +89,50 @@ watch(
         </button>
       </div>
 
-      <!-- Menu Items Grid -->
-      <div class="grid gap-6 sm:grid-cols-2">
+      <!-- Default View: grouped by category -->
+      <div v-if="isDefaultView">
+        <div v-for="category in defaultCategories" :key="category.id" class="mb-10 last:mb-0">
+          <h3 class="font-display text-xl font-semibold text-neutral-700 mb-4">{{ category.name }}</h3>
+          <div class="grid gap-6 sm:grid-cols-2">
+            <div
+              v-for="item in category.items"
+              :key="item.name"
+              :id="'menu-item-' + toSlug(item.name)"
+              class="bg-white rounded-lg shadow-sm border border-neutral-100 overflow-hidden transition-shadow"
+            >
+              <div v-if="item.imageKey" class="relative h-40 bg-neutral-100 overflow-hidden">
+                <img
+                  :src="`/api/images/${item.imageKey}`"
+                  :alt="item.name"
+                  class="absolute w-full"
+                  :style="{
+                    top: '50%',
+                    left: '50%',
+                    transform: `translate(-50%, -50%) scale(${item.imageScale || 1})`
+                  }"
+                />
+              </div>
+              <div class="p-5">
+                <div class="flex justify-between items-start mb-2">
+                  <router-link
+                    :to="{ name: 'menu', params: { categoryId: category.id, itemSlug: toSlug(item.name) } }"
+                    class="font-display text-lg font-semibold text-neutral-900 hover:text-neutral-600 transition-colors"
+                  >
+                    {{ item.name }}
+                  </router-link>
+                  <span class="font-display text-lg font-semibold text-neutral-900">${{ item.price.toFixed(2) }}</span>
+                </div>
+                <p v-if="item.description" class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Single Category View -->
+      <div v-else class="grid gap-6 sm:grid-cols-2">
         <div
-          v-for="item in activeItems"
+          v-for="item in singleCategoryItems"
           :key="item.name"
           :id="'menu-item-' + toSlug(item.name)"
           class="bg-white rounded-lg shadow-sm border border-neutral-100 overflow-hidden transition-shadow"

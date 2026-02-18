@@ -10,6 +10,7 @@ export interface MenuItem {
 export interface MenuCategory {
   id: string
   name: string
+  default?: boolean
   items: MenuItem[]
 }
 

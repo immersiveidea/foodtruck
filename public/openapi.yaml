@@ -68,6 +68,10 @@ components:
         name:
           type: string
           example: Milk Teas
+        default:
+          type: boolean
+          description: If true, this category's items are shown on the initial menu load
+          default: false
         items:
           type: array
           items:
