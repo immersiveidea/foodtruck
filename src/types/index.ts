@@ -96,3 +96,39 @@ export interface SocialLink {
 export interface SocialLinksContent {
   links: SocialLink[]
 }
+
+export interface CartItem {
+  categoryId: string
+  itemName: string
+  quantity: number
+  unitPrice: number
+}
+
+export type OrderStatus = 'pending' | 'paid' | 'fulfilled' | 'cancelled'
+
+export interface OrderLineItem {
+  categoryId: string
+  itemName: string
+  quantity: number
+  unitPrice: number
+}
+
+export interface Order {
+  id: string
+  items: OrderLineItem[]
+  total: number
+  customerName?: string
+  customerEmail?: string
+  status: OrderStatus
+  stripeSessionId: string
+  stripePaymentIntentId?: string
+  createdAt: string
+  updatedAt: string
+  adminNotes?: string
+}
+
+export interface CheckoutRequestItem {
+  categoryId: string
+  itemName: string
+  quantity: number
+}

@@ -3,6 +3,7 @@ import HeroSection from '../components/HeroSection.vue'
 import AboutSection from '../components/AboutSection.vue'
 import TabbedMenuSection from '../components/TabbedMenuSection.vue'
 import ScheduleSection from '../components/ScheduleSection.vue'
+import CartDrawer from '../components/CartDrawer.vue'
 import SocialIcon from '../components/SocialIcon.vue'
 import { useSocialLinks } from '../composables/useSocialLinks'
 
@@ -11,6 +12,7 @@ const { socialLinks } = useSocialLinks()
 
 <template>
   <div>
+    <CartDrawer />
     <HeroSection />
     <AboutSection />
     <TabbedMenuSection />

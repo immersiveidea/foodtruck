@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import imageCompression from 'browser-image-compression'
 import JSZip from 'jszip'
-import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem, FaviconContent, SocialLinksContent } from '../types'
+import type { MenuData, ScheduleData, ScheduleLocation, BookingRequest, BookingsData, HeroContent, AboutContent, MenuItem, FaviconContent, SocialLinksContent, Order, OrderStatus } from '../types'
 import { validateSourceImage, validateImageDimensions, generateFaviconVariants } from '../lib/favicon/generator'
 import type { FaviconVariant } from '../lib/favicon/generator'
 import AddressAutocomplete from '../components/AddressAutocomplete.vue'
@@ -17,7 +17,7 @@ const logger = useLogger('AdminPage')
 const adminKey = ref(localStorage.getItem('adminKey') || '')
 const uploadingItemIndex = ref<number | null>(null)
 const isAuthenticated = ref(false)
-const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'hero' | 'about' | 'social' | 'favicon' | 'backup'>('menu')
+const activeTab = ref<'menu' | 'schedule' | 'bookings' | 'orders' | 'hero' | 'about' | 'social' | 'favicon' | 'backup'>('menu')
 const loading = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -32,6 +32,11 @@ const editingEvent = ref<ScheduleLocation | null>(null)
 // Bookings state
 const bookingsData = ref<BookingsData>([])
 const expandedBookingId = ref<string | null>(null)
+
+// Orders state
+const ordersData = ref<Order[]>([])
+const expandedOrderId = ref<string | null>(null)
+const ordersFilter = ref<'all' | OrderStatus>('all')
 
 // Hero state
 const heroData = ref<HeroContent>({ title: '', tagline: '', ctaText: '', ctaLink: '' })
@@ -105,10 +110,11 @@ async function authenticate() {
 async function loadData() {
   loading.value = true
   try {
-    const [menuRes, scheduleRes, bookingsRes, heroRes, aboutRes, faviconRes, socialLinksRes] = await Promise.all([
+    const [menuRes, scheduleRes, bookingsRes, ordersRes, heroRes, aboutRes, faviconRes, socialLinksRes] = await Promise.all([
       fetch('/api/admin/menu', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/schedule', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/bookings', { headers: { 'X-Admin-Key': adminKey.value } }),
+      fetch('/api/admin/orders', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/hero', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/about', { headers: { 'X-Admin-Key': adminKey.value } }),
       fetch('/api/admin/favicon', { headers: { 'X-Admin-Key': adminKey.value } }),
@@ -129,6 +135,10 @@ async function loadData() {
 
     if (bookingsRes.ok) {
       bookingsData.value = await bookingsRes.json()
+    }
+
+    if (ordersRes.ok) {
+      ordersData.value = await ordersRes.json()
     }
 
     if (heroRes.ok) {
@@ -870,6 +880,78 @@ async function saveBooking(booking: BookingRequest) {
 
 // formatTimestamp imported from useDateTimeFormat composable
 
+// Orders functions
+const filteredOrders = computed(() => {
+  const sorted = [...ordersData.value].sort((a, b) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+  if (ordersFilter.value === 'all') return sorted
+  return sorted.filter(o => o.status === ordersFilter.value)
+})
+
+function toggleOrder(id: string) {
+  expandedOrderId.value = expandedOrderId.value === id ? null : id
+}
+
+async function updateOrderStatus(order: Order, status: OrderStatus) {
+  loading.value = true
+  message.value = null
+  try {
+    const res = await fetch('/api/admin/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': adminKey.value
+      },
+      body: JSON.stringify({
+        id: order.id,
+        status,
+        adminNotes: order.adminNotes
+      })
+    })
+
+    if (res.ok) {
+      order.status = status
+      order.updatedAt = new Date().toISOString()
+      message.value = { type: 'success', text: `Order marked as ${status}` }
+    } else {
+      message.value = { type: 'error', text: 'Failed to update order' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to update order' }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function saveOrderNotes(order: Order) {
+  loading.value = true
+  message.value = null
+  try {
+    const res = await fetch('/api/admin/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': adminKey.value
+      },
+      body: JSON.stringify({
+        id: order.id,
+        adminNotes: order.adminNotes
+      })
+    })
+
+    if (res.ok) {
+      message.value = { type: 'success', text: 'Notes saved' }
+    } else {
+      message.value = { type: 'error', text: 'Failed to save notes' }
+    }
+  } catch {
+    message.value = { type: 'error', text: 'Failed to save notes' }
+  } finally {
+    loading.value = false
+  }
+}
+
 // Backup functions
 async function createBackup() {
   backupLoading.value = true
@@ -1133,6 +1215,23 @@ onMounted(() => {
               class="ml-1 px-2 py-0.5 text-xs rounded-full bg-yellow-500 text-white"
             >
               {{ bookingsData.filter(b => b.status === 'pending').length }}
+            </span>
+          </button>
+          <button
+            @click="activeTab = 'orders'"
+            :class="[
+              'px-4 py-2 rounded-lg font-medium',
+              activeTab === 'orders'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            ]"
+          >
+            Orders
+            <span
+              v-if="ordersData.filter(o => o.status === 'paid').length > 0"
+              class="ml-1 px-2 py-0.5 text-xs rounded-full bg-green-500 text-white"
+            >
+              {{ ordersData.filter(o => o.status === 'paid').length }}
             </span>
           </button>
           <button
@@ -1760,6 +1859,169 @@ onMounted(() => {
                       class="flex-1 py-2 bg-neutral-600 text-white rounded hover:bg-neutral-700 disabled:opacity-50 text-sm font-medium"
                     >
                       Reset to Pending
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Orders Manager -->
+        <div v-if="activeTab === 'orders'" class="space-y-4">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Online Orders</h2>
+
+            <!-- Status Filter -->
+            <div class="flex flex-wrap gap-2 mb-6">
+              <button
+                v-for="filter in (['all', 'paid', 'fulfilled', 'cancelled', 'pending'] as const)"
+                :key="filter"
+                @click="ordersFilter = filter"
+                :class="[
+                  'px-3 py-1.5 text-sm font-medium rounded-full border transition-all',
+                  ordersFilter === filter
+                    ? 'bg-neutral-900 text-white border-neutral-900'
+                    : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
+                ]"
+              >
+                {{ filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1) }}
+              </button>
+            </div>
+
+            <div v-if="filteredOrders.length === 0" class="text-neutral-500 text-center py-8">
+              No orders found.
+            </div>
+
+            <div v-else class="space-y-3">
+              <div
+                v-for="order in filteredOrders"
+                :key="order.id"
+                class="border border-neutral-200 rounded-lg overflow-hidden"
+              >
+                <!-- Order Header -->
+                <div
+                  @click="toggleOrder(order.id)"
+                  class="p-4 cursor-pointer hover:bg-neutral-50 flex justify-between items-center"
+                >
+                  <div class="flex-1">
+                    <div class="flex items-center gap-3">
+                      <span
+                        :class="[
+                          'px-2 py-0.5 text-xs font-medium rounded-full',
+                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          order.status === 'paid' ? 'bg-green-100 text-green-800' :
+                          order.status === 'fulfilled' ? 'bg-blue-100 text-blue-800' :
+                          'bg-red-100 text-red-800'
+                        ]"
+                      >
+                        {{ order.status }}
+                      </span>
+                      <span class="font-medium">{{ order.customerName || 'Guest' }}</span>
+                      <span class="text-sm text-neutral-500">${{ order.total.toFixed(2) }}</span>
+                    </div>
+                    <p class="text-sm text-neutral-500 mt-1">
+                      {{ order.items.length }} item{{ order.items.length !== 1 ? 's' : '' }} &middot; {{ formatTimestamp(order.createdAt) }}
+                    </p>
+                  </div>
+                  <svg
+                    :class="['w-5 h-5 text-neutral-400 transition-transform', expandedOrderId === order.id ? 'rotate-180' : '']"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+
+                <!-- Order Details (Expanded) -->
+                <div v-if="expandedOrderId === order.id" class="border-t border-neutral-200 p-4 bg-neutral-50">
+                  <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div>
+                      <p class="text-neutral-500">Customer</p>
+                      <p class="font-medium">{{ order.customerName || 'N/A' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Email</p>
+                      <p class="font-medium">{{ order.customerEmail || 'N/A' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Order ID</p>
+                      <p class="font-medium text-xs font-mono">{{ order.id }}</p>
+                    </div>
+                    <div>
+                      <p class="text-neutral-500">Placed</p>
+                      <p class="font-medium">{{ formatTimestamp(order.createdAt) }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Line Items -->
+                  <div class="mb-4">
+                    <p class="text-neutral-500 text-sm mb-2">Items</p>
+                    <div class="bg-white border border-neutral-200 rounded divide-y divide-neutral-100">
+                      <div
+                        v-for="item in order.items"
+                        :key="`${item.categoryId}:${item.itemName}`"
+                        class="flex justify-between px-3 py-2 text-sm"
+                      >
+                        <span>{{ item.itemName }} <span class="text-neutral-400">x{{ item.quantity }}</span></span>
+                        <span class="font-medium">${{ (item.unitPrice * item.quantity).toFixed(2) }}</span>
+                      </div>
+                      <div class="flex justify-between px-3 py-2 text-sm font-semibold">
+                        <span>Total</span>
+                        <span>${{ order.total.toFixed(2) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Admin Notes -->
+                  <div class="mb-4">
+                    <label class="block">
+                      <span class="text-sm text-neutral-500">Admin Notes</span>
+                      <textarea
+                        v-model="order.adminNotes"
+                        rows="2"
+                        class="mt-1 block w-full text-sm border border-neutral-300 rounded px-3 py-2 focus:border-neutral-400 focus:outline-none"
+                        placeholder="Internal notes about this order..."
+                      ></textarea>
+                    </label>
+                  </div>
+
+                  <div class="flex gap-2 mb-2">
+                    <button
+                      @click="saveOrderNotes(order)"
+                      :disabled="loading"
+                      class="flex-1 py-2 bg-neutral-900 text-white rounded hover:bg-neutral-800 disabled:opacity-50 text-sm font-medium"
+                    >
+                      Save Notes
+                    </button>
+                  </div>
+
+                  <!-- Status Actions -->
+                  <div class="flex gap-2">
+                    <button
+                      v-if="order.status === 'paid'"
+                      @click="updateOrderStatus(order, 'fulfilled')"
+                      :disabled="loading"
+                      class="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      Mark Fulfilled
+                    </button>
+                    <button
+                      v-if="order.status !== 'cancelled' && order.status !== 'pending'"
+                      @click="updateOrderStatus(order, 'cancelled')"
+                      :disabled="loading"
+                      class="flex-1 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      Cancel Order
+                    </button>
+                    <button
+                      v-if="order.status === 'fulfilled' || order.status === 'cancelled'"
+                      @click="updateOrderStatus(order, 'paid')"
+                      :disabled="loading"
+                      class="flex-1 py-2 bg-neutral-600 text-white rounded hover:bg-neutral-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      Revert to Paid
                     </button>
                   </div>
                 </div>

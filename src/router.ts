@@ -25,6 +25,21 @@ const router = createRouter({
       path: '/book',
       name: 'book',
       component: BookingPage
+    },
+    {
+      path: '/checkout',
+      name: 'checkout',
+      component: () => import('./pages/CheckoutPage.vue')
+    },
+    {
+      path: '/order/success',
+      name: 'order-success',
+      component: () => import('./pages/OrderConfirmationPage.vue')
+    },
+    {
+      path: '/order/cancelled',
+      name: 'order-cancelled',
+      component: () => import('./pages/OrderCancelledPage.vue')
     }
   ],
   scrollBehavior(to, _from, savedPosition) {

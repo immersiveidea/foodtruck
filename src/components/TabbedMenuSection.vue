@@ -3,11 +3,13 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMenu } from '../composables/useMenu'
 import { useSchedule } from '../composables/useSchedule'
+import { useCart } from '../composables/useCart'
 import { toSlug } from '../utils/slug'
 import type { MenuItem } from '../types'
 
 const { menu } = useMenu()
 const { schedule } = useSchedule()
+const cart = useCart()
 
 const activeEvent = computed(() => {
   const now = new Date()
@@ -154,6 +156,12 @@ watch(
                   <span class="font-display text-lg font-semibold text-neutral-900">${{ getPrice(category.id, item).toFixed(2) }}</span>
                 </div>
                 <p v-if="item.description" class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
+                <button
+                  @click="cart.addItem(category.id, item.name, getPrice(category.id, item))"
+                  class="mt-3 w-full py-1.5 text-sm font-medium font-body bg-neutral-900 text-white rounded-full hover:bg-neutral-800 transition-colors"
+                >
+                  Add to Cart
+                </button>
               </div>
             </div>
           </div>
@@ -191,6 +199,12 @@ watch(
               <span class="font-display text-lg font-semibold text-neutral-900">${{ getPrice(activeCategory!, item).toFixed(2) }}</span>
             </div>
             <p v-if="item.description" class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
+            <button
+              @click="cart.addItem(activeCategory!, item.name, getPrice(activeCategory!, item))"
+              class="mt-3 w-full py-1.5 text-sm font-medium font-body bg-neutral-900 text-white rounded-full hover:bg-neutral-800 transition-colors"
+            >
+              Add to Cart
+            </button>
           </div>
         </div>
       </div>
