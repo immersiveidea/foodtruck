@@ -2,9 +2,40 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMenu } from '../composables/useMenu'
+import { useSchedule } from '../composables/useSchedule'
 import { toSlug } from '../utils/slug'
+import type { MenuItem } from '../types'
 
 const { menu } = useMenu()
+const { schedule } = useSchedule()
+
+const activeEvent = computed(() => {
+  const now = new Date()
+  const today = now.toISOString().split('T')[0]
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+  for (const event of schedule.value) {
+    if (!event.date || !event.startTime || !event.endTime) continue
+    if (event.date !== today) continue
+    if (!event.priceOverrides || Object.keys(event.priceOverrides).length === 0) continue
+
+    const startParts = event.startTime.split(':').map(Number)
+    const endParts = event.endTime.split(':').map(Number)
+    const startMinutes = (startParts[0] ?? 0) * 60 + (startParts[1] ?? 0)
+    const endMinutes = (endParts[0] ?? 0) * 60 + (endParts[1] ?? 0)
+
+    if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+      return event
+    }
+  }
+  return null
+})
+
+function getPrice(categoryId: string, item: MenuItem): number {
+  if (!activeEvent.value?.priceOverrides) return item.price
+  const key = `${categoryId}:${item.name}`
+  return activeEvent.value.priceOverrides[key] ?? item.price
+}
 const route = useRoute()
 const router = useRouter()
 const activeCategory = ref<string | null>(null)
@@ -120,7 +151,7 @@ watch(
                   >
                     {{ item.name }}
                   </router-link>
-                  <span class="font-display text-lg font-semibold text-neutral-900">${{ item.price.toFixed(2) }}</span>
+                  <span class="font-display text-lg font-semibold text-neutral-900">${{ getPrice(category.id, item).toFixed(2) }}</span>
                 </div>
                 <p v-if="item.description" class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
               </div>
@@ -157,7 +188,7 @@ watch(
               >
                 {{ item.name }}
               </router-link>
-              <span class="font-display text-lg font-semibold text-neutral-900">${{ item.price.toFixed(2) }}</span>
+              <span class="font-display text-lg font-semibold text-neutral-900">${{ getPrice(activeCategory!, item).toFixed(2) }}</span>
             </div>
             <p v-if="item.description" class="font-body text-sm text-neutral-500 leading-relaxed">{{ item.description }}</p>
           </div>

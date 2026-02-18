@@ -31,6 +31,7 @@ export interface ScheduleLocation {
   duration?: string      // Optional descriptive duration (e.g., "4 hours")
   private?: boolean      // If true, location details are hidden on public site
   bookingId?: string     // Links this event to a confirmed booking
+  priceOverrides?: Record<string, number>  // Key: "categoryId:itemName" → override price
   // Legacy fields for backward compatibility
   day?: string           // Deprecated: computed from date
   time?: string          // Deprecated: use startTime/endTime

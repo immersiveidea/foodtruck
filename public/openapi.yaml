@@ -145,6 +145,15 @@ components:
           type: string
           description: Links this schedule event to a confirmed booking request
           example: booking-1706123456789-abc1234
+        priceOverrides:
+          type: object
+          description: "Menu item price overrides for this event. Key format: \"categoryId:itemName\""
+          additionalProperties:
+            type: number
+            format: float
+          example:
+            "milk-teas:Classic Milk Tea": 7.50
+            "snacks:Popcorn Chicken": 9.00
         day:
           type: string
           description: "Deprecated: Day of week is now computed from date"

@@ -690,6 +690,9 @@ function importMenu(event: Event) {
   input.value = ''
 }
 
+// Event pricing state
+const showEventPricing = ref(false)
+
 function addScheduleEvent() {
   const newId = Math.max(0, ...scheduleData.value.map(e => e.id)) + 1
   // Default to tomorrow's date
@@ -697,6 +700,7 @@ function addScheduleEvent() {
   tomorrow.setDate(tomorrow.getDate() + 1)
   const defaultDate = tomorrow.toISOString().split('T')[0]
 
+  showEventPricing.value = false
   editingEvent.value = {
     id: newId,
     date: defaultDate!,
@@ -733,7 +737,36 @@ function onAddressSelect(suggestion: AddressSuggestion) {
 }
 
 function editScheduleEvent(event: ScheduleLocation) {
-  editingEvent.value = { ...event }
+  editingEvent.value = JSON.parse(JSON.stringify(event))
+  showEventPricing.value = !!(event.priceOverrides && Object.keys(event.priceOverrides).length > 0)
+}
+
+function getOverridePrice(categoryId: string, itemName: string): number | null {
+  const key = `${categoryId}:${itemName}`
+  return editingEvent.value?.priceOverrides?.[key] ?? null
+}
+
+function setOverridePrice(categoryId: string, itemName: string, value: string) {
+  if (!editingEvent.value) return
+  const key = `${categoryId}:${itemName}`
+  if (value === '' || value === null || value === undefined) {
+    if (editingEvent.value.priceOverrides) {
+      delete editingEvent.value.priceOverrides[key]
+      if (Object.keys(editingEvent.value.priceOverrides).length === 0) {
+        delete editingEvent.value.priceOverrides
+      }
+    }
+  } else {
+    if (!editingEvent.value.priceOverrides) {
+      editingEvent.value.priceOverrides = {}
+    }
+    editingEvent.value.priceOverrides[key] = parseFloat(value)
+  }
+}
+
+function clearAllOverrides() {
+  if (!editingEvent.value) return
+  delete editingEvent.value.priceOverrides
 }
 
 function removeScheduleEvent(id: number) {
@@ -1461,6 +1494,50 @@ onMounted(() => {
                       />
                     </label>
                   </div>
+
+                  <!-- Event Pricing -->
+                  <div class="border border-neutral-200 rounded-lg">
+                    <button
+                      @click="showEventPricing = !showEventPricing"
+                      class="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 rounded-lg"
+                    >
+                      <span>
+                        Event Pricing
+                        <span v-if="editingEvent.priceOverrides && Object.keys(editingEvent.priceOverrides).length > 0" class="ml-1 text-xs text-neutral-500">
+                          ({{ Object.keys(editingEvent.priceOverrides).length }} override{{ Object.keys(editingEvent.priceOverrides).length !== 1 ? 's' : '' }})
+                        </span>
+                      </span>
+                      <span class="text-neutral-400">{{ showEventPricing ? '▲' : '▼' }}</span>
+                    </button>
+                    <div v-if="showEventPricing" class="px-4 pb-4 space-y-4">
+                      <p class="text-xs text-neutral-400">Set custom prices for this event. Leave blank to use the default menu price.</p>
+                      <div v-for="category in menuData.categories" :key="category.id">
+                        <h4 class="text-sm font-medium text-neutral-600 mb-2">{{ category.name }}</h4>
+                        <div class="space-y-2">
+                          <div v-for="item in category.items" :key="item.name" class="flex items-center gap-3">
+                            <span class="text-sm text-neutral-700 flex-1">{{ item.name }}</span>
+                            <span class="text-xs text-neutral-400 w-16 text-right">${{ item.price.toFixed(2) }}</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              :value="getOverridePrice(category.id, item.name)"
+                              @input="setOverridePrice(category.id, item.name, ($event.target as HTMLInputElement).value)"
+                              class="w-24 rounded border border-neutral-300 px-2 py-1 text-sm"
+                              placeholder="Default"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        v-if="editingEvent.priceOverrides && Object.keys(editingEvent.priceOverrides).length > 0"
+                        @click="clearAllOverrides"
+                        class="text-xs text-red-600 hover:text-red-700"
+                      >
+                        Clear All Overrides
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="flex gap-3 mt-6">
@@ -1497,6 +1574,9 @@ onMounted(() => {
                   </p>
                   <p class="text-sm text-neutral-400">{{ event.address }}</p>
                   <p v-if="event.duration" class="text-sm text-neutral-400">Duration: {{ event.duration }}</p>
+                  <p v-if="event.priceOverrides && Object.keys(event.priceOverrides).length > 0" class="text-sm text-amber-600">
+                    {{ Object.keys(event.priceOverrides).length }} price override{{ Object.keys(event.priceOverrides).length !== 1 ? 's' : '' }}
+                  </p>
                 </div>
                 <div class="flex gap-2">
                   <button
