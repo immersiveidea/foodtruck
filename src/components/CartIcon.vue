@@ -17,7 +17,7 @@ const { itemCount, isOpen } = useCart()
       v-if="itemCount > 0"
       class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
     >
-      {{ itemCount > 99 ? '99+' : itemCount }}
+      {{ itemCount > 9 ? '9+' : itemCount }}
     </span>
   </button>
 </template>
