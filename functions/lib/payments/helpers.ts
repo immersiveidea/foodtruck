@@ -4,6 +4,7 @@ interface CartItem {
   categoryId: string
   itemName: string
   quantity: number
+  notes?: string[]
 }
 
 interface MenuItem {
@@ -22,7 +23,7 @@ interface MenuData {
 }
 
 export interface ValidatedLineItems {
-  lineItems: { categoryId: string; itemName: string; quantity: number; unitPrice: number }[]
+  lineItems: { categoryId: string; itemName: string; quantity: number; unitPrice: number; notes?: string[] }[]
   providerLineItems: ProviderLineItem[]
   totalCents: number
 }
@@ -64,7 +65,8 @@ export async function validateAndBuildLineItems(
       categoryId: cartItem.categoryId,
       itemName: cartItem.itemName,
       quantity: cartItem.quantity,
-      unitPrice: price
+      unitPrice: price,
+      ...(cartItem.notes?.length ? { notes: cartItem.notes } : {})
     })
 
     providerLineItems.push({

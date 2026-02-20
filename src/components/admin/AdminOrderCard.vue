@@ -69,9 +69,21 @@ const emit = defineEmits<{
       <div class="mb-4">
         <p class="text-neutral-500 text-sm mb-2">Items</p>
         <div class="bg-white border border-neutral-200 rounded divide-y divide-neutral-100">
-          <div v-for="item in order.items" :key="`${item.categoryId}:${item.itemName}`" class="flex justify-between px-3 py-2 text-sm">
-            <span>{{ item.itemName }} <span class="text-neutral-400">x{{ item.quantity }}</span></span>
-            <span class="font-medium">${{ (item.unitPrice * item.quantity).toFixed(2) }}</span>
+          <div v-for="item in order.items" :key="`${item.categoryId}:${item.itemName}`" class="px-3 py-2 text-sm">
+            <div class="flex justify-between">
+              <span>{{ item.itemName }} <span class="text-neutral-400">x{{ item.quantity }}</span></span>
+              <span class="font-medium">${{ (item.unitPrice * item.quantity).toFixed(2) }}</span>
+            </div>
+            <template v-if="item.notes?.some((n: string) => n.trim())">
+              <p
+                v-for="(note, idx) in item.notes"
+                :key="idx"
+                v-show="note.trim()"
+                class="text-xs italic text-amber-600 mt-0.5 ml-2"
+              >
+                {{ item.quantity > 1 ? `(${idx + 1}) ` : '' }}{{ note }}
+              </p>
+            </template>
           </div>
           <div class="flex justify-between px-3 py-2 text-sm font-semibold">
             <span>Total</span>

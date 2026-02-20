@@ -13,7 +13,7 @@ import PosQrPayment from './PosQrPayment.vue'
 
 const { adminFetch, message } = useAdminApi()
 const { menuData } = useAdminData()
-const { items, total, addItem, incrementItem, decrementItem, removeItem, clearOrder, getCheckoutItems } = usePosOrder()
+const { items, total, addItem, incrementItem, decrementItem, removeItem, updateItemNote, clearOrder, getCheckoutItems } = usePosOrder()
 const { readerStatus, error: terminalError, initTerminal, discoverAndConnect } = usePosTerminal()
 const { config: paymentConfig, ready: paymentReady } = usePaymentProvider()
 
@@ -182,6 +182,7 @@ function dismissSuccess() {
         @increment="incrementItem"
         @decrement="decrementItem"
         @remove="removeItem"
+        @updateNote="updateItemNote"
         @clear="clearOrder"
         @pay="openPayment"
       />

@@ -5,6 +5,7 @@ export interface PosOrderItem {
   itemName: string
   quantity: number
   unitPrice: number
+  notes: string[]
 }
 
 const items = ref<PosOrderItem[]>([])
@@ -22,14 +23,18 @@ export function usePosOrder() {
     const existing = items.value.find(i => i.categoryId === categoryId && i.itemName === itemName)
     if (existing) {
       existing.quantity++
+      existing.notes.push('')
     } else {
-      items.value.push({ categoryId, itemName, quantity: 1, unitPrice })
+      items.value.push({ categoryId, itemName, quantity: 1, unitPrice, notes: [''] })
     }
   }
 
   function incrementItem(categoryId: string, itemName: string) {
     const item = items.value.find(i => i.categoryId === categoryId && i.itemName === itemName)
-    if (item) item.quantity++
+    if (item) {
+      item.quantity++
+      item.notes.push('')
+    }
   }
 
   function decrementItem(categoryId: string, itemName: string) {
@@ -38,6 +43,7 @@ export function usePosOrder() {
     const item = items.value[index]!
     if (item.quantity > 1) {
       item.quantity--
+      item.notes.pop()
     } else {
       items.value.splice(index, 1)
     }
@@ -48,16 +54,27 @@ export function usePosOrder() {
     if (index !== -1) items.value.splice(index, 1)
   }
 
+  function updateItemNote(categoryId: string, itemName: string, unitIndex: number, note: string) {
+    const item = items.value.find(i => i.categoryId === categoryId && i.itemName === itemName)
+    if (item && unitIndex >= 0 && unitIndex < item.notes.length) {
+      item.notes[unitIndex] = note
+    }
+  }
+
   function clearOrder() {
     items.value = []
   }
 
   function getCheckoutItems() {
-    return items.value.map(i => ({
-      categoryId: i.categoryId,
-      itemName: i.itemName,
-      quantity: i.quantity
-    }))
+    return items.value.map(i => {
+      const hasNotes = i.notes.some(n => n.trim() !== '')
+      return {
+        categoryId: i.categoryId,
+        itemName: i.itemName,
+        quantity: i.quantity,
+        ...(hasNotes ? { notes: i.notes } : {})
+      }
+    })
   }
 
   return {
@@ -68,6 +85,7 @@ export function usePosOrder() {
     incrementItem,
     decrementItem,
     removeItem,
+    updateItemNote,
     clearOrder,
     getCheckoutItems
   }

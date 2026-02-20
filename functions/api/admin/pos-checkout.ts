@@ -7,7 +7,7 @@ interface Env {
 }
 
 interface PosCheckoutRequest {
-  items: { categoryId: string; itemName: string; quantity: number }[]
+  items: { categoryId: string; itemName: string; quantity: number; notes?: string[] }[]
   customerName?: string
 }
 
@@ -16,6 +16,7 @@ interface OrderLineItem {
   itemName: string
   quantity: number
   unitPrice: number
+  notes?: string[]
 }
 
 interface Order {

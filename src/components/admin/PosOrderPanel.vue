@@ -12,6 +12,7 @@ const emit = defineEmits<{
   increment: [categoryId: string, itemName: string]
   decrement: [categoryId: string, itemName: string]
   remove: [categoryId: string, itemName: string]
+  updateNote: [categoryId: string, itemName: string, unitIndex: number, note: string]
   clear: []
   pay: [method: 'cash' | 'card_external' | 'pos_terminal' | 'pos_card' | 'pos_qr']
   'update:customerName': [value: string]
@@ -26,42 +27,109 @@ const emit = defineEmits<{
         Tap items to add to order
       </div>
       <div v-else class="divide-y divide-neutral-100">
-        <div
-          v-for="item in items"
-          :key="`${item.categoryId}:${item.itemName}`"
-          class="flex items-center justify-between py-2 gap-2"
-        >
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium truncate">{{ item.itemName }}</p>
-            <p class="text-xs text-neutral-500">${{ item.unitPrice.toFixed(2) }} each</p>
+        <template v-for="item in items" :key="`${item.categoryId}:${item.itemName}`">
+          <!-- Single quantity: one row -->
+          <div v-if="item.quantity === 1" class="py-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate">{{ item.itemName }}</p>
+                <p class="text-xs text-neutral-500">${{ item.unitPrice.toFixed(2) }}</p>
+              </div>
+              <div class="flex items-center gap-1 flex-shrink-0">
+                <button
+                  @click="emit('decrement', item.categoryId, item.itemName)"
+                  class="w-7 h-7 flex items-center justify-center rounded bg-neutral-100 hover:bg-neutral-200 text-sm font-medium"
+                >
+                  -
+                </button>
+                <span class="w-6 text-center text-sm font-medium">{{ item.quantity }}</span>
+                <button
+                  @click="emit('increment', item.categoryId, item.itemName)"
+                  class="w-7 h-7 flex items-center justify-center rounded bg-neutral-100 hover:bg-neutral-200 text-sm font-medium"
+                >
+                  +
+                </button>
+              </div>
+              <span class="text-sm font-medium w-16 text-right flex-shrink-0">
+                ${{ item.unitPrice.toFixed(2) }}
+              </span>
+              <button
+                @click="emit('remove', item.categoryId, item.itemName)"
+                class="text-neutral-300 hover:text-red-500 flex-shrink-0"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <input
+              type="text"
+              :value="item.notes[0]"
+              @input="emit('updateNote', item.categoryId, item.itemName, 0, ($event.target as HTMLInputElement).value)"
+              placeholder="Customization"
+              class="mt-1 w-full px-2 py-1 text-xs border border-neutral-200 rounded focus:outline-none focus:ring-1 focus:ring-neutral-400"
+            />
           </div>
-          <div class="flex items-center gap-1 flex-shrink-0">
-            <button
-              @click="emit('decrement', item.categoryId, item.itemName)"
-              class="w-7 h-7 flex items-center justify-center rounded bg-neutral-100 hover:bg-neutral-200 text-sm font-medium"
+
+          <!-- Multiple quantity: one row per unit -->
+          <template v-else>
+            <div
+              v-for="u in item.quantity"
+              :key="`${item.categoryId}:${item.itemName}:${u - 1}`"
+              :class="['py-2', u > 1 ? 'bg-neutral-50/50' : '']"
             >
-              -
-            </button>
-            <span class="w-6 text-center text-sm font-medium">{{ item.quantity }}</span>
-            <button
-              @click="emit('increment', item.categoryId, item.itemName)"
-              class="w-7 h-7 flex items-center justify-center rounded bg-neutral-100 hover:bg-neutral-200 text-sm font-medium"
-            >
-              +
-            </button>
-          </div>
-          <span class="text-sm font-medium w-16 text-right flex-shrink-0">
-            ${{ (item.unitPrice * item.quantity).toFixed(2) }}
-          </span>
-          <button
-            @click="emit('remove', item.categoryId, item.itemName)"
-            class="text-neutral-300 hover:text-red-500 flex-shrink-0"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium truncate">{{ item.itemName }} <span class="text-neutral-400 text-xs">({{ u }} of {{ item.quantity }})</span></p>
+                  <p class="text-xs text-neutral-500">${{ item.unitPrice.toFixed(2) }}</p>
+                </div>
+                <!-- Only first unit gets qty controls and remove button -->
+                <template v-if="u === 1">
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      @click="emit('decrement', item.categoryId, item.itemName)"
+                      class="w-7 h-7 flex items-center justify-center rounded bg-neutral-100 hover:bg-neutral-200 text-sm font-medium"
+                    >
+                      -
+                    </button>
+                    <span class="w-6 text-center text-sm font-medium">{{ item.quantity }}</span>
+                    <button
+                      @click="emit('increment', item.categoryId, item.itemName)"
+                      class="w-7 h-7 flex items-center justify-center rounded bg-neutral-100 hover:bg-neutral-200 text-sm font-medium"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span class="text-sm font-medium w-16 text-right flex-shrink-0">
+                    ${{ item.unitPrice.toFixed(2) }}
+                  </span>
+                  <button
+                    @click="emit('remove', item.categoryId, item.itemName)"
+                    class="text-neutral-300 hover:text-red-500 flex-shrink-0"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </template>
+                <template v-else>
+                  <span class="text-sm font-medium w-16 text-right flex-shrink-0">
+                    ${{ item.unitPrice.toFixed(2) }}
+                  </span>
+                  <!-- spacer to align with first row's remove button -->
+                  <span class="w-4 flex-shrink-0"></span>
+                </template>
+              </div>
+              <input
+                type="text"
+                :value="item.notes[u - 1]"
+                @input="emit('updateNote', item.categoryId, item.itemName, u - 1, ($event.target as HTMLInputElement).value)"
+                placeholder="Customization"
+                class="mt-1 w-full px-2 py-1 text-xs border border-neutral-200 rounded focus:outline-none focus:ring-1 focus:ring-neutral-400"
+              />
+            </div>
+          </template>
+        </template>
       </div>
     </div>
 

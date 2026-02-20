@@ -19,6 +19,7 @@ interface PrepUnit {
   unitIndex: number
   unitLabel: string  // e.g. "Classic Milk Tea" or "Taro Slush (2 of 3)"
   status: PrepStatus
+  note?: string
 }
 
 // Flatten orders into per-unit rows, active first (sorted by createdAt), done at bottom
@@ -31,6 +32,7 @@ const prepUnits = computed(() => {
       const item = order.items[i]!
       for (let u = 0; u < item.quantity; u++) {
         const status = getUnitStatus(order, i, u)
+        const noteText = item.notes?.[u]?.trim() || undefined
         const unit: PrepUnit = {
           orderId: order.id,
           orderNumber: order.id.slice(-6).toUpperCase(),
@@ -44,6 +46,7 @@ const prepUnits = computed(() => {
             ? `${item.itemName} (${u + 1} of ${item.quantity})`
             : item.itemName,
           status,
+          note: noteText,
         }
         if (status === 'done') {
           done.push(unit)
@@ -109,6 +112,7 @@ function isOverdue(createdAt: string) {
             </span>
           </div>
           <p class="text-base font-medium text-neutral-800 truncate">{{ unit.unitLabel }}</p>
+          <p v-if="unit.note" class="text-sm italic text-amber-600 truncate">{{ unit.note }}</p>
         </div>
 
         <!-- Action button -->

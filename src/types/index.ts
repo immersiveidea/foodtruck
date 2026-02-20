@@ -119,6 +119,7 @@ export interface OrderLineItem {
   itemName: string
   quantity: number
   unitPrice: number
+  notes?: string[]              // per-unit customization notes, length = quantity
   prepStatuses?: PrepStatus[]  // per-unit prep tracking, length = quantity
 }
 
@@ -148,4 +149,5 @@ export interface CheckoutRequestItem {
   categoryId: string
   itemName: string
   quantity: number
+  notes?: string[]
 }

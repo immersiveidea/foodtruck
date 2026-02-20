@@ -7,7 +7,7 @@ interface Env {
 }
 
 interface PosPaymentIntentRequest {
-  items: { categoryId: string; itemName: string; quantity: number }[]
+  items: { categoryId: string; itemName: string; quantity: number; notes?: string[] }[]
   customerName?: string
   sourceId?: string // Square: tokenized card nonce
 }
@@ -17,6 +17,7 @@ interface OrderLineItem {
   itemName: string
   quantity: number
   unitPrice: number
+  notes?: string[]
 }
 
 interface Order {

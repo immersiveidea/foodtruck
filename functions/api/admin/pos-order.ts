@@ -18,7 +18,7 @@ interface MenuData {
 }
 
 interface PosOrderRequest {
-  items: { categoryId: string; itemName: string; quantity: number }[]
+  items: { categoryId: string; itemName: string; quantity: number; notes?: string[] }[]
   paymentMethod: 'cash' | 'card_external'
   cashTendered?: number
   customerName?: string
@@ -29,6 +29,7 @@ interface OrderLineItem {
   itemName: string
   quantity: number
   unitPrice: number
+  notes?: string[]
 }
 
 interface Order {
@@ -87,7 +88,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         categoryId: cartItem.categoryId,
         itemName: cartItem.itemName,
         quantity: cartItem.quantity,
-        unitPrice: price
+        unitPrice: price,
+        ...(cartItem.notes?.length ? { notes: cartItem.notes } : {})
       })
     }
 
