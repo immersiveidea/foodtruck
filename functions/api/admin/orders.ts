@@ -4,7 +4,7 @@ interface Env {
 
 interface Order {
   id: string
-  items: { categoryId: string; itemName: string; quantity: number; unitPrice: number }[]
+  items: { categoryId: string; itemName: string; quantity: number; unitPrice: number; prepStatuses?: ('queued' | 'started' | 'done')[] }[]
   total: number
   customerName?: string
   customerEmail?: string
@@ -20,6 +20,7 @@ interface UpdateRequest {
   id: string
   status?: 'pending' | 'paid' | 'fulfilled' | 'cancelled'
   adminNotes?: string
+  itemPrepStatus?: { itemIndex: number; unitIndex: number; status: 'queued' | 'started' | 'done' }
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -54,6 +55,24 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     if (body.adminNotes !== undefined) {
       orders[index].adminNotes = body.adminNotes
+    }
+
+    if (body.itemPrepStatus) {
+      const { itemIndex, unitIndex, status } = body.itemPrepStatus
+      if (!['queued', 'started', 'done'].includes(status)) {
+        return Response.json({ success: false, error: 'Invalid prep status' }, { status: 400 })
+      }
+      const item = orders[index].items[itemIndex]
+      if (!item) {
+        return Response.json({ success: false, error: 'Invalid item index' }, { status: 400 })
+      }
+      if (unitIndex < 0 || unitIndex >= item.quantity) {
+        return Response.json({ success: false, error: 'Invalid unit index' }, { status: 400 })
+      }
+      if (!item.prepStatuses) {
+        item.prepStatuses = new Array(item.quantity).fill('queued')
+      }
+      item.prepStatuses[unitIndex] = status
     }
 
     orders[index].updatedAt = new Date().toISOString()

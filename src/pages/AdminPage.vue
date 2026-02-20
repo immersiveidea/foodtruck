@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminApi } from '../composables/useAdminApi'
 import { useAdminData } from '../composables/useAdminData'
+import AdminPrepQueueTab from '../components/admin/AdminPrepQueueTab.vue'
 import AdminPosTab from '../components/admin/AdminPosTab.vue'
 import AdminMenuTab from '../components/admin/AdminMenuTab.vue'
 import AdminScheduleTab from '../components/admin/AdminScheduleTab.vue'
@@ -19,7 +20,7 @@ const router = useRouter()
 const { adminKey, isAuthenticated, loading, message, adminFetch, logout } = useAdminApi()
 const { bookingsData, ordersData, loadAllData } = useAdminData()
 
-const validTabs = ['pos', 'menu', 'schedule', 'bookings', 'orders', 'hero', 'about', 'social', 'favicon', 'backup'] as const
+const validTabs = ['pos', 'prep', 'menu', 'schedule', 'bookings', 'orders', 'hero', 'about', 'social', 'favicon', 'backup'] as const
 type TabKey = typeof validTabs[number]
 
 const activeTab = computed<TabKey>(() => {
@@ -51,8 +52,22 @@ onMounted(() => {
   if (adminKey.value) authenticate()
 })
 
+const prepBadgeCount = computed(() => {
+  let count = 0
+  for (const o of ordersData.value) {
+    if (o.status !== 'paid') continue
+    for (const item of o.items) {
+      for (let u = 0; u < item.quantity; u++) {
+        if ((item.prepStatuses?.[u] ?? 'queued') !== 'done') count++
+      }
+    }
+  }
+  return count
+})
+
 const tabs = [
   { key: 'pos', label: 'POS' },
+  { key: 'prep', label: 'Prep' },
   { key: 'menu', label: 'Menu' },
   { key: 'schedule', label: 'Schedule' },
   { key: 'bookings', label: 'Bookings' },
@@ -93,7 +108,7 @@ function selectTab(key: string) {
       </div>
     </header>
 
-    <main :class="['mx-auto py-8 px-4', activeTab === 'pos' ? 'max-w-full' : 'max-w-4xl']">
+    <main :class="['mx-auto py-8 px-4', activeTab === 'pos' || activeTab === 'prep' ? 'max-w-full' : 'max-w-4xl']">
       <!-- Message -->
       <div
         v-if="message"
@@ -172,6 +187,12 @@ function selectTab(key: string) {
                 >
                   {{ ordersData.filter(o => o.status === 'paid').length }}
                 </span>
+                <span
+                  v-if="tab.key === 'prep' && prepBadgeCount > 0"
+                  class="px-2 py-0.5 text-xs rounded-full bg-orange-500 text-white"
+                >
+                  {{ prepBadgeCount }}
+                </span>
               </span>
             </button>
           </div>
@@ -203,10 +224,17 @@ function selectTab(key: string) {
             >
               {{ ordersData.filter(o => o.status === 'paid').length }}
             </span>
+            <span
+              v-if="tab.key === 'prep' && prepBadgeCount > 0"
+              class="ml-1 px-2 py-0.5 text-xs rounded-full bg-orange-500 text-white"
+            >
+              {{ prepBadgeCount }}
+            </span>
           </button>
         </div>
 
         <AdminPosTab v-if="activeTab === 'pos'" />
+        <AdminPrepQueueTab v-if="activeTab === 'prep'" />
         <AdminMenuTab v-if="activeTab === 'menu'" />
         <AdminScheduleTab v-if="activeTab === 'schedule'" />
         <AdminBookingsTab v-if="activeTab === 'bookings'" />

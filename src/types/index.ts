@@ -109,7 +109,9 @@ export interface CartItem {
 }
 
 export type OrderStatus = 'pending' | 'paid' | 'fulfilled' | 'cancelled'
-export type PaymentMethod = 'stripe_online' | 'stripe_pos' | 'stripe_qr' | 'stripe_terminal' | 'cash' | 'card_external'
+export type PrepStatus = 'queued' | 'started' | 'done'
+export type PaymentMethod = 'online' | 'pos_card' | 'pos_qr' | 'pos_terminal' | 'cash' | 'card_external'
+  | 'stripe_online' | 'stripe_pos' | 'stripe_qr' | 'stripe_terminal' // deprecated, kept for old orders
 export type OrderSource = 'online' | 'pos'
 
 export interface OrderLineItem {
@@ -117,6 +119,7 @@ export interface OrderLineItem {
   itemName: string
   quantity: number
   unitPrice: number
+  prepStatuses?: PrepStatus[]  // per-unit prep tracking, length = quantity
 }
 
 export interface Order {
@@ -126,6 +129,10 @@ export interface Order {
   customerName?: string
   customerEmail?: string
   status: OrderStatus
+  providerSessionId?: string
+  providerPaymentId?: string
+  paymentProvider?: 'stripe' | 'square'
+  // Deprecated: kept for backward compat with existing KV data
   stripeSessionId?: string
   stripePaymentIntentId?: string
   source?: OrderSource
