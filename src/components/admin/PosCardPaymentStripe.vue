@@ -3,11 +3,13 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { loadStripe } from '@stripe/stripe-js'
 import type { Stripe, StripeElements } from '@stripe/stripe-js'
 import { useAdminApi } from '../../composables/useAdminApi'
+import { usePaymentProvider } from '../../composables/usePaymentProvider'
 import type { PosOrderItem } from '../../composables/usePosOrder'
 
 const props = defineProps<{
   total: number
   items: PosOrderItem[]
+  customerName: string
 }>()
 
 const emit = defineEmits<{
@@ -16,6 +18,7 @@ const emit = defineEmits<{
 }>()
 
 const { adminFetch } = useAdminApi()
+const { ready } = usePaymentProvider()
 
 const loading = ref(true)
 const paying = ref(false)
@@ -27,7 +30,8 @@ let orderId = ''
 
 onMounted(async () => {
   try {
-    const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
+    const config = await ready
+    const stripePublishableKey = config?.publishableKey || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
     if (!stripePublishableKey) {
       throw new Error('Stripe publishable key not configured')
     }
@@ -46,7 +50,8 @@ onMounted(async () => {
           categoryId: i.categoryId,
           itemName: i.itemName,
           quantity: i.quantity
-        }))
+        })),
+        customerName: props.customerName || undefined
       })
     })
 

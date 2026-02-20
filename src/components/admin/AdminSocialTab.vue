@@ -16,6 +16,7 @@ const socialPlatforms = [
   { slug: 'threads', label: 'Threads' },
   { slug: 'yelp', label: 'Yelp' },
   { slug: 'linktree', label: 'Linktree' },
+  { slug: 'streetfoodfinder', label: 'StreetFoodFinder' },
 ]
 
 function addSocialLink() {

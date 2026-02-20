@@ -7,6 +7,7 @@ import type { PosOrderItem } from '../../composables/usePosOrder'
 const props = defineProps<{
   total: number
   items: PosOrderItem[]
+  customerName: string
 }>()
 
 const emit = defineEmits<{
@@ -32,7 +33,8 @@ onMounted(async () => {
           categoryId: i.categoryId,
           itemName: i.itemName,
           quantity: i.quantity
-        }))
+        })),
+        customerName: props.customerName || undefined
       })
     })
 

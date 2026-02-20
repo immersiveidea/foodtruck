@@ -1,35 +1,61 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, defineAsyncComponent } from 'vue'
 import { useAdminApi } from '../../composables/useAdminApi'
 import { useAdminData } from '../../composables/useAdminData'
 import { usePosOrder } from '../../composables/usePosOrder'
 import { usePosTerminal } from '../../composables/usePosTerminal'
+import { usePaymentProvider } from '../../composables/usePaymentProvider'
 import PosMenuGrid from './PosMenuGrid.vue'
 import PosOrderPanel from './PosOrderPanel.vue'
 import PosCashPayment from './PosCashPayment.vue'
 import PosCardPayment from './PosCardPayment.vue'
-import PosStripePayment from './PosStripePayment.vue'
 import PosQrPayment from './PosQrPayment.vue'
-import PosTerminalPayment from './PosTerminalPayment.vue'
 
 const { adminFetch, message } = useAdminApi()
 const { menuData } = useAdminData()
 const { items, total, addItem, incrementItem, decrementItem, removeItem, clearOrder, getCheckoutItems } = usePosOrder()
 const { readerStatus, error: terminalError, initTerminal, discoverAndConnect } = usePosTerminal()
+const { config: paymentConfig, ready: paymentReady } = usePaymentProvider()
 
 const readerConnected = computed(() => readerStatus.value === 'connected')
+const isStripe = computed(() => !paymentConfig.value || paymentConfig.value.provider === 'stripe')
 
-onMounted(async () => {
-  await initTerminal()
-  await discoverAndConnect()
+// Dynamic components based on provider
+const PosCardProviderComponent = computed(() => {
+  if (paymentConfig.value?.provider === 'square') {
+    return defineAsyncComponent(() => import('./PosCardPaymentSquare.vue'))
+  }
+  return defineAsyncComponent(() => import('./PosCardPaymentStripe.vue'))
 })
 
-type PaymentModal = 'cash' | 'card_external' | 'stripe_terminal' | 'stripe_pos' | 'stripe_qr' | null
+const PosTerminalProviderComponent = computed(() => {
+  if (paymentConfig.value?.provider === 'square') {
+    return defineAsyncComponent(() => import('./PosTerminalPaymentSquare.vue'))
+  }
+  return defineAsyncComponent(() => import('./PosTerminalPaymentStripe.vue'))
+})
+
+onMounted(async () => {
+  // Wait for payment config to determine if we need Stripe Terminal
+  try {
+    await paymentReady
+  } catch {
+    // Non-fatal: will default to stripe
+  }
+
+  if (isStripe.value) {
+    await initTerminal()
+    await discoverAndConnect()
+  }
+})
+
+type PaymentModal = 'cash' | 'card_external' | 'pos_terminal' | 'pos_card' | 'pos_qr' | null
+const customerName = ref('')
 const activePaymentModal = ref<PaymentModal>(null)
 const paymentLoading = ref(false)
 const lastCompletedOrder = ref<{ id: string; method: string; change?: number } | null>(null)
 
-function openPayment(method: 'cash' | 'card_external' | 'stripe_terminal' | 'stripe_pos' | 'stripe_qr') {
+function openPayment(method: 'cash' | 'card_external' | 'pos_terminal' | 'pos_card' | 'pos_qr') {
   activePaymentModal.value = method
 }
 
@@ -46,7 +72,8 @@ async function completeCashPayment(cashTendered: number) {
       body: JSON.stringify({
         items: getCheckoutItems(),
         paymentMethod: 'cash',
-        cashTendered
+        cashTendered,
+        customerName: customerName.value || undefined
       })
     })
 
@@ -58,6 +85,7 @@ async function completeCashPayment(cashTendered: number) {
 
     lastCompletedOrder.value = { id: data.order!.id, method: 'Cash', change: data.order!.changeDue }
     clearOrder()
+    customerName.value = ''
     closePayment()
   } catch {
     message.value = { type: 'error', text: 'Failed to create order' }
@@ -74,7 +102,8 @@ async function completeCardPayment() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         items: getCheckoutItems(),
-        paymentMethod: 'card_external'
+        paymentMethod: 'card_external',
+        customerName: customerName.value || undefined
       })
     })
 
@@ -86,6 +115,7 @@ async function completeCardPayment() {
 
     lastCompletedOrder.value = { id: data.order!.id, method: 'External Card' }
     clearOrder()
+    customerName.value = ''
     closePayment()
   } catch {
     message.value = { type: 'error', text: 'Failed to create order' }
@@ -94,21 +124,24 @@ async function completeCardPayment() {
   }
 }
 
-function completeStripePayment(orderId: string) {
-  lastCompletedOrder.value = { id: orderId, method: 'Stripe' }
+function completePosCardPayment(orderId: string) {
+  lastCompletedOrder.value = { id: orderId, method: 'Card' }
   clearOrder()
+  customerName.value = ''
   closePayment()
 }
 
 function completeQrPayment(orderId: string) {
   lastCompletedOrder.value = { id: orderId, method: 'QR Code' }
   clearOrder()
+  customerName.value = ''
   closePayment()
 }
 
 function completeTerminalPayment(orderId: string) {
   lastCompletedOrder.value = { id: orderId, method: 'Terminal' }
   clearOrder()
+  customerName.value = ''
   closePayment()
 }
 
@@ -118,8 +151,8 @@ function dismissSuccess() {
 </script>
 
 <template>
-  <!-- Reader Status -->
-  <div class="flex items-center gap-2 mb-2 text-sm">
+  <!-- Reader Status (Stripe only) -->
+  <div v-if="isStripe" class="flex items-center gap-2 mb-2 text-sm">
     <span
       :class="['inline-block w-2.5 h-2.5 rounded-full', readerConnected ? 'bg-green-500' : readerStatus === 'discovering' || readerStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500']"
     ></span>
@@ -145,6 +178,7 @@ function dismissSuccess() {
         :items="items"
         :total="total"
         :readerConnected="readerConnected"
+        v-model:customerName="customerName"
         @increment="incrementItem"
         @decrement="decrementItem"
         @remove="removeItem"
@@ -192,26 +226,31 @@ function dismissSuccess() {
     @cancel="closePayment"
   />
 
-  <PosStripePayment
-    v-if="activePaymentModal === 'stripe_pos'"
+  <component
+    :is="PosCardProviderComponent"
+    v-if="activePaymentModal === 'pos_card'"
     :total="total"
     :items="items"
-    @complete="completeStripePayment"
+    :customerName="customerName"
+    @complete="completePosCardPayment"
     @cancel="closePayment"
   />
 
   <PosQrPayment
-    v-if="activePaymentModal === 'stripe_qr'"
+    v-if="activePaymentModal === 'pos_qr'"
     :total="total"
     :items="items"
+    :customerName="customerName"
     @complete="completeQrPayment"
     @cancel="closePayment"
   />
 
-  <PosTerminalPayment
-    v-if="activePaymentModal === 'stripe_terminal'"
+  <component
+    :is="PosTerminalProviderComponent"
+    v-if="activePaymentModal === 'pos_terminal'"
     :total="total"
     :items="items"
+    :customerName="customerName"
     @complete="completeTerminalPayment"
     @cancel="closePayment"
   />

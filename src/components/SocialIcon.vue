@@ -30,6 +30,7 @@ const iconMap: Record<string, { path: string; title: string }> = {
   threads: { path: siThreads.path, title: siThreads.title },
   yelp: { path: siYelp.path, title: siYelp.title },
   linktree: { path: siLinktree.path, title: siLinktree.title },
+  streetfoodfinder: { path: 'M12 0C7.58 0 4 3.58 4 8c0 5.25 8 13 8 13s8-7.75 8-13c0-4.42-3.58-8-8-8zm-1.5 4h1v4h-1V4zm3 0h1v4h-1V4zm-1.5 5c.83 0 1.5.67 1.5 1.5S12.83 12 12 12s-1.5-.67-1.5-1.5S11.17 9 12 9z', title: 'StreetFoodFinder' },
 }
 
 const icon = iconMap[props.platform]

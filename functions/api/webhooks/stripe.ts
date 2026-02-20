@@ -1,9 +1,8 @@
-import Stripe from 'stripe'
+import { createPaymentProvider } from '../../lib/payments/factory'
 
 interface Env {
   CONTENT: KVNamespace
-  STRIPE_SECRET_KEY: string
-  STRIPE_WEBHOOK_SECRET: string
+  [key: string]: unknown
 }
 
 interface Order {
@@ -13,7 +12,9 @@ interface Order {
   customerName?: string
   customerEmail?: string
   status: 'pending' | 'paid' | 'fulfilled' | 'cancelled'
-  stripeSessionId: string
+  providerSessionId?: string
+  providerPaymentId?: string
+  stripeSessionId?: string
   stripePaymentIntentId?: string
   createdAt: string
   updatedAt: string
@@ -21,65 +22,32 @@ interface Order {
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const stripe = new Stripe(context.env.STRIPE_SECRET_KEY)
-  const signature = context.request.headers.get('stripe-signature')
+  const provider = createPaymentProvider(context.env as unknown as Record<string, string>)
 
-  if (!signature) {
-    return new Response('Missing stripe-signature header', { status: 400 })
+  const result = await provider.validateWebhook(context.request)
+
+  if (!result.valid) {
+    return new Response('Webhook validation failed', { status: 400 })
   }
 
-  let event: Stripe.Event
-  try {
-    const body = await context.request.text()
-    event = await stripe.webhooks.constructEventAsync(
-      body,
-      signature,
-      context.env.STRIPE_WEBHOOK_SECRET
-    )
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error'
-    return new Response(`Webhook signature verification failed: ${msg}`, { status: 400 })
-  }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session
-    const orderId = session.metadata?.orderId
-
-    if (orderId) {
+  for (const event of result.events) {
+    if (event.type === 'payment_completed') {
       const orders = await context.env.CONTENT.get('orders', 'json') as Order[] | null ?? []
-      const index = orders.findIndex(o => o.id === orderId)
-
-      if (index !== -1) {
-        orders[index].status = 'paid'
-        orders[index].updatedAt = new Date().toISOString()
-        orders[index].stripePaymentIntentId = typeof session.payment_intent === 'string'
-          ? session.payment_intent
-          : session.payment_intent?.id
-
-        if (session.customer_details?.name) {
-          orders[index].customerName = session.customer_details.name
-        }
-        if (session.customer_details?.email) {
-          orders[index].customerEmail = session.customer_details.email
-        }
-
-        await context.env.CONTENT.put('orders', JSON.stringify(orders))
-      }
-    }
-  }
-
-  if (event.type === 'payment_intent.succeeded') {
-    const paymentIntent = event.data.object as Stripe.PaymentIntent
-    const orderId = paymentIntent.metadata?.orderId
-
-    if (orderId) {
-      const orders = await context.env.CONTENT.get('orders', 'json') as Order[] | null ?? []
-      const index = orders.findIndex(o => o.id === orderId)
+      const index = orders.findIndex(o => o.id === event.orderId)
 
       if (index !== -1 && orders[index].status === 'pending') {
         orders[index].status = 'paid'
         orders[index].updatedAt = new Date().toISOString()
-        orders[index].stripePaymentIntentId = paymentIntent.id
+        orders[index].providerPaymentId = event.providerPaymentId
+        // Backward compat
+        orders[index].stripePaymentIntentId = event.providerPaymentId
+
+        if (event.customerName) {
+          orders[index].customerName = event.customerName
+        }
+        if (event.customerEmail) {
+          orders[index].customerEmail = event.customerEmail
+        }
 
         await context.env.CONTENT.put('orders', JSON.stringify(orders))
       }

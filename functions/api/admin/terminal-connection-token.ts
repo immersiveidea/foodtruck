@@ -1,15 +1,19 @@
-import Stripe from 'stripe'
+import { createPaymentProvider } from '../../lib/payments/factory'
 
 interface Env {
-  STRIPE_SECRET_KEY: string
+  [key: string]: unknown
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
-    const stripe = new Stripe(context.env.STRIPE_SECRET_KEY)
-    const connectionToken = await stripe.terminal.connectionTokens.create()
+    const provider = createPaymentProvider(context.env as unknown as Record<string, string>)
 
-    return Response.json({ secret: connectionToken.secret })
+    if (!provider.createTerminalConnectionToken) {
+      return Response.json({ error: 'Connection tokens not supported by this provider' }, { status: 400 })
+    }
+
+    const { secret } = await provider.createTerminalConnectionToken()
+    return Response.json({ secret })
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : 'Unknown error'
     return Response.json({ error: errMsg }, { status: 500 })

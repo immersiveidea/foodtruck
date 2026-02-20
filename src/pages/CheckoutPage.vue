@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { loadStripe } from '@stripe/stripe-js'
 import type { StripeEmbeddedCheckout } from '@stripe/stripe-js'
 import { useCart } from '../composables/useCart'
+import { usePaymentProvider } from '../composables/usePaymentProvider'
 
 const router = useRouter()
-const { items, fetchClientSecret } = useCart()
+const { items, fetchCheckoutSession, fetchClientSecret } = useCart()
+const { ready } = usePaymentProvider()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -19,7 +20,21 @@ onMounted(async () => {
   }
 
   try {
-    const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
+    const config = await ready
+
+    if (config?.provider === 'square') {
+      // Square: get checkout URL and redirect
+      const session = await fetchCheckoutSession()
+      if (session.checkoutUrl) {
+        window.location.href = session.checkoutUrl
+        return
+      }
+      throw new Error('No checkout URL returned from payment provider')
+    }
+
+    // Stripe: embedded checkout
+    const { loadStripe } = await import('@stripe/stripe-js')
+    const stripePublishableKey = config?.publishableKey || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
     if (!stripePublishableKey) {
       throw new Error('Stripe publishable key not configured')
     }

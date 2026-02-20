@@ -81,7 +81,7 @@ function isOverdue(createdAt: string) {
         <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
       </span>
       <span v-else class="h-3 w-3 rounded-full bg-neutral-300 inline-block"></span>
-      <span>{{ polling ? 'Live — polling every 5s' : 'Paused' }}</span>
+      <span>{{ polling ? 'Live — polling every 2s' : 'Paused' }}</span>
     </div>
 
     <!-- Prep list -->

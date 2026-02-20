@@ -1,30 +1,15 @@
-import Stripe from 'stripe'
+import { createPaymentProvider } from '../lib/payments/factory'
+import { validateAndBuildLineItems, generateOrderId } from '../lib/payments/helpers'
 
 interface Env {
   CONTENT: KVNamespace
-  STRIPE_SECRET_KEY: string
+  [key: string]: unknown
 }
 
 interface CheckoutRequestItem {
   categoryId: string
   itemName: string
   quantity: number
-}
-
-interface MenuItem {
-  name: string
-  price: number
-  description?: string
-}
-
-interface MenuCategory {
-  id: string
-  name: string
-  items: MenuItem[]
-}
-
-interface MenuData {
-  categories: MenuCategory[]
 }
 
 interface OrderLineItem {
@@ -41,7 +26,10 @@ interface Order {
   customerName?: string
   customerEmail?: string
   status: 'pending' | 'paid' | 'fulfilled' | 'cancelled'
-  stripeSessionId: string
+  providerSessionId?: string
+  providerPaymentId?: string
+  paymentProvider?: string
+  stripeSessionId?: string
   stripePaymentIntentId?: string
   source?: string
   paymentMethod?: string
@@ -64,78 +52,27 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return Response.json({ success: false, error: 'Online ordering is currently disabled' }, { status: 403 })
     }
 
-    // Load menu from KV to get authoritative prices
-    const menuData = await context.env.CONTENT.get('menu', 'json') as MenuData | null
-    if (!menuData || !menuData.categories) {
-      return Response.json({ success: false, error: 'Menu not available' }, { status: 500 })
-    }
-
-    // Build price lookup map: "categoryId:itemName" -> price
-    const priceMap = new Map<string, number>()
-    const nameMap = new Map<string, string>() // for Stripe line item names
-    for (const category of menuData.categories) {
-      for (const item of category.items) {
-        const key = `${category.id}:${item.name}`
-        priceMap.set(key, item.price)
-        nameMap.set(key, `${item.name} (${category.name})`)
-      }
-    }
-
-    // Validate cart items and build line items
-    const lineItems: OrderLineItem[] = []
-    const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
-
-    for (const cartItem of body.items) {
-      if (!cartItem.categoryId || !cartItem.itemName || !cartItem.quantity) {
-        return Response.json({ success: false, error: 'Invalid cart item' }, { status: 400 })
-      }
-
-      if (cartItem.quantity < 1 || cartItem.quantity > 50) {
-        return Response.json({ success: false, error: `Invalid quantity for ${cartItem.itemName}` }, { status: 400 })
-      }
-
-      const key = `${cartItem.categoryId}:${cartItem.itemName}`
-      const price = priceMap.get(key)
-      if (price === undefined) {
-        return Response.json({ success: false, error: `Item not found: ${cartItem.itemName}` }, { status: 400 })
-      }
-
-      lineItems.push({
-        categoryId: cartItem.categoryId,
-        itemName: cartItem.itemName,
-        quantity: cartItem.quantity,
-        unitPrice: price
-      })
-
-      stripeLineItems.push({
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: nameMap.get(key) || cartItem.itemName
-          },
-          unit_amount: Math.round(price * 100) // Convert to cents
-        },
-        quantity: cartItem.quantity
-      })
-    }
+    // Validate cart items against authoritative menu prices
+    const { lineItems, providerLineItems, totalCents } = await validateAndBuildLineItems(
+      context.env.CONTENT,
+      body.items.map(i => ({
+        categoryId: i.categoryId,
+        itemName: i.itemName,
+        quantity: i.quantity,
+      }))
+    )
 
     const total = lineItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
-    const orderId = `order-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    const orderId = generateOrderId()
     const now = new Date().toISOString()
-
-    // Create Stripe Checkout Session
-    const stripe = new Stripe(context.env.STRIPE_SECRET_KEY)
     const origin = new URL(context.request.url).origin
 
-    const session = await stripe.checkout.sessions.create({
-      ui_mode: 'embedded',
-      payment_method_types: ['card'],
-      line_items: stripeLineItems,
-      mode: 'payment',
-      return_url: `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-      metadata: {
-        orderId
-      }
+    const provider = createPaymentProvider(context.env as unknown as Record<string, string>)
+    const result = await provider.createOnlineCheckout({
+      lineItems: providerLineItems,
+      totalCents,
+      orderId,
+      origin,
     })
 
     // Store pending order in KV
@@ -144,18 +81,25 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       items: lineItems,
       total,
       status: 'pending',
-      stripeSessionId: session.id,
-      source: 'online' as const,
-      paymentMethod: 'stripe_online' as const,
+      providerSessionId: result.providerSessionId,
+      paymentProvider: provider.name,
+      // Backward compat
+      stripeSessionId: result.providerSessionId,
+      source: 'online',
+      paymentMethod: 'online',
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     }
 
     const orders = await context.env.CONTENT.get('orders', 'json') as Order[] | null ?? []
     orders.push(order)
     await context.env.CONTENT.put('orders', JSON.stringify(orders))
 
-    return Response.json({ success: true, clientSecret: session.client_secret })
+    return Response.json({
+      success: true,
+      clientSecret: result.clientSecret,
+      checkoutUrl: result.checkoutUrl,
+    })
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : 'Unknown error'
     return Response.json({ success: false, error: errMsg }, { status: 500 })

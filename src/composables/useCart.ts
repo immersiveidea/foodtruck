@@ -20,6 +20,11 @@ watch(items, (val) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
 }, { deep: true })
 
+export interface CheckoutSession {
+  clientSecret?: string
+  checkoutUrl?: string
+}
+
 export function useCart() {
   const itemCount = computed(() =>
     items.value.reduce((sum, item) => sum + item.quantity, 0)
@@ -67,7 +72,7 @@ export function useCart() {
     items.value = []
   }
 
-  async function fetchClientSecret(): Promise<string> {
+  async function fetchCheckoutSession(): Promise<CheckoutSession> {
     const res = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -80,11 +85,23 @@ export function useCart() {
       })
     })
 
-    const data = await res.json() as { success: boolean; clientSecret?: string; error?: string }
-    if (!data.success || !data.clientSecret) {
+    const data = await res.json() as { success: boolean; clientSecret?: string; checkoutUrl?: string; error?: string }
+    if (!data.success) {
       throw new Error(data.error || 'Checkout failed')
     }
-    return data.clientSecret
+    return {
+      clientSecret: data.clientSecret,
+      checkoutUrl: data.checkoutUrl,
+    }
+  }
+
+  // Backward compat wrapper
+  async function fetchClientSecret(): Promise<string> {
+    const session = await fetchCheckoutSession()
+    if (!session.clientSecret) {
+      throw new Error('No client secret returned')
+    }
+    return session.clientSecret
   }
 
   return {
@@ -96,6 +113,7 @@ export function useCart() {
     removeItem,
     updateQuantity,
     clearCart,
+    fetchCheckoutSession,
     fetchClientSecret
   }
 }

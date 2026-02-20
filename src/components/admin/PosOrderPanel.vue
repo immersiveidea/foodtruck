@@ -5,6 +5,7 @@ defineProps<{
   items: PosOrderItem[]
   total: number
   readerConnected: boolean
+  customerName: string
 }>()
 
 const emit = defineEmits<{
@@ -12,7 +13,8 @@ const emit = defineEmits<{
   decrement: [categoryId: string, itemName: string]
   remove: [categoryId: string, itemName: string]
   clear: []
-  pay: [method: 'cash' | 'card_external' | 'stripe_terminal' | 'stripe_pos' | 'stripe_qr']
+  pay: [method: 'cash' | 'card_external' | 'pos_terminal' | 'pos_card' | 'pos_qr']
+  'update:customerName': [value: string]
 }>()
 </script>
 
@@ -70,6 +72,16 @@ const emit = defineEmits<{
         <span class="text-xl font-bold">${{ total.toFixed(2) }}</span>
       </div>
 
+      <!-- Customer name -->
+      <input
+        v-if="items.length > 0"
+        type="text"
+        :value="customerName"
+        @input="emit('update:customerName', ($event.target as HTMLInputElement).value)"
+        placeholder="Customer name"
+        class="w-full mb-3 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+      />
+
       <!-- Payment buttons -->
       <div class="grid grid-cols-2 gap-2 mb-2" v-if="items.length > 0">
         <button
@@ -79,7 +91,7 @@ const emit = defineEmits<{
           Cash
         </button>
         <button
-          @click="emit('pay', 'stripe_terminal')"
+          @click="emit('pay', 'pos_terminal')"
           class="py-3 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 relative"
         >
           <span class="flex items-center justify-center gap-1.5">
@@ -90,13 +102,13 @@ const emit = defineEmits<{
           </span>
         </button>
         <button
-          @click="emit('pay', 'stripe_pos')"
+          @click="emit('pay', 'pos_card')"
           class="py-3 bg-purple-600 text-white rounded-lg font-medium text-sm hover:bg-purple-700"
         >
           Pay Online
         </button>
         <button
-          @click="emit('pay', 'stripe_qr')"
+          @click="emit('pay', 'pos_qr')"
           class="py-3 bg-neutral-700 text-white rounded-lg font-medium text-sm hover:bg-neutral-800"
         >
           QR Code

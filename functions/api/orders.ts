@@ -9,7 +9,8 @@ interface Order {
   customerName?: string
   customerEmail?: string
   status: 'pending' | 'paid' | 'fulfilled' | 'cancelled'
-  stripeSessionId: string
+  providerSessionId?: string
+  stripeSessionId?: string
   stripePaymentIntentId?: string
   createdAt: string
   updatedAt: string
@@ -25,7 +26,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
 
   const orders = await context.env.CONTENT.get('orders', 'json') as Order[] | null ?? []
-  const order = orders.find(o => o.stripeSessionId === sessionId)
+  // Check providerSessionId first, fall back to stripeSessionId for old orders
+  const order = orders.find(o => o.providerSessionId === sessionId || o.stripeSessionId === sessionId)
 
   if (!order) {
     return Response.json({ success: false, error: 'Order not found' }, { status: 404 })

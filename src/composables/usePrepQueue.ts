@@ -83,7 +83,7 @@ export function usePrepQueue() {
     if (polling.value) return
     polling.value = true
     fetchPrepQueue()
-    pollTimer = setInterval(fetchPrepQueue, 5000)
+    pollTimer = setInterval(fetchPrepQueue, 2000)
   }
 
   function stopPolling() {

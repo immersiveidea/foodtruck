@@ -1,23 +1,9 @@
-import Stripe from 'stripe'
+import { createPaymentProvider } from '../../lib/payments/factory'
+import { validateAndBuildLineItems, generateOrderId } from '../../lib/payments/helpers'
 
 interface Env {
   CONTENT: KVNamespace
-  STRIPE_SECRET_KEY: string
-}
-
-interface MenuItem {
-  name: string
-  price: number
-}
-
-interface MenuCategory {
-  id: string
-  name: string
-  items: MenuItem[]
-}
-
-interface MenuData {
-  categories: MenuCategory[]
+  [key: string]: unknown
 }
 
 interface PosCheckoutRequest {
@@ -38,9 +24,11 @@ interface Order {
   total: number
   customerName?: string
   status: 'pending' | 'paid' | 'fulfilled' | 'cancelled'
-  stripeSessionId: string
+  providerSessionId?: string
+  paymentProvider?: string
+  stripeSessionId?: string
   source: 'pos'
-  paymentMethod: 'stripe_qr'
+  paymentMethod: 'pos_qr'
   createdAt: string
   updatedAt: string
 }
@@ -53,91 +41,49 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return Response.json({ success: false, error: 'No items in order' }, { status: 400 })
     }
 
-    // Load menu from KV to get authoritative prices
-    const menuData = await context.env.CONTENT.get('menu', 'json') as MenuData | null
-    if (!menuData || !menuData.categories) {
-      return Response.json({ success: false, error: 'Menu not available' }, { status: 500 })
-    }
-
-    // Build price and name lookup
-    const priceMap = new Map<string, number>()
-    const nameMap = new Map<string, string>()
-    for (const category of menuData.categories) {
-      for (const item of category.items) {
-        const key = `${category.id}:${item.name}`
-        priceMap.set(key, item.price)
-        nameMap.set(key, `${item.name} (${category.name})`)
-      }
-    }
-
-    // Validate and build line items
-    const lineItems: OrderLineItem[] = []
-    const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
-
-    for (const cartItem of body.items) {
-      if (!cartItem.categoryId || !cartItem.itemName || !cartItem.quantity || cartItem.quantity < 1) {
-        return Response.json({ success: false, error: `Invalid item: ${cartItem.itemName}` }, { status: 400 })
-      }
-
-      const key = `${cartItem.categoryId}:${cartItem.itemName}`
-      const price = priceMap.get(key)
-      if (price === undefined) {
-        return Response.json({ success: false, error: `Item not found: ${cartItem.itemName}` }, { status: 400 })
-      }
-
-      lineItems.push({
-        categoryId: cartItem.categoryId,
-        itemName: cartItem.itemName,
-        quantity: cartItem.quantity,
-        unitPrice: price
-      })
-
-      stripeLineItems.push({
-        price_data: {
-          currency: 'usd',
-          product_data: { name: nameMap.get(key) || cartItem.itemName },
-          unit_amount: Math.round(price * 100)
-        },
-        quantity: cartItem.quantity
-      })
-    }
+    const { lineItems, providerLineItems, totalCents } = await validateAndBuildLineItems(
+      context.env.CONTENT,
+      body.items
+    )
 
     const total = lineItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
-    const orderId = `order-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    const orderId = generateOrderId()
     const now = new Date().toISOString()
-
-    // Create Stripe Checkout Session (hosted, not embedded — we need a URL for QR code)
-    const stripe = new Stripe(context.env.STRIPE_SECRET_KEY)
     const origin = new URL(context.request.url).origin
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: stripeLineItems,
-      mode: 'payment',
-      success_url: `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/admin/pos`,
-      metadata: { orderId }
+    const provider = createPaymentProvider(context.env as unknown as Record<string, string>)
+    const result = await provider.createPosCheckoutLink({
+      lineItems: providerLineItems,
+      totalCents,
+      orderId,
+      origin,
     })
 
-    // Store pending order in KV
     const order: Order = {
       id: orderId,
       items: lineItems,
       total: Math.round(total * 100) / 100,
       customerName: body.customerName || undefined,
       status: 'pending',
-      stripeSessionId: session.id,
+      providerSessionId: result.providerSessionId,
+      paymentProvider: provider.name,
+      stripeSessionId: result.providerSessionId,
       source: 'pos',
-      paymentMethod: 'stripe_qr',
+      paymentMethod: 'pos_qr',
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     }
 
     const orders = await context.env.CONTENT.get('orders', 'json') as Order[] | null ?? []
     orders.push(order)
     await context.env.CONTENT.put('orders', JSON.stringify(orders))
 
-    return Response.json({ success: true, url: session.url, sessionId: session.id, orderId })
+    return Response.json({
+      success: true,
+      url: result.checkoutUrl,
+      sessionId: result.providerSessionId,
+      orderId,
+    })
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : 'Unknown error'
     return Response.json({ success: false, error: errMsg }, { status: 500 })
