@@ -1,25 +1,35 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAdminApi } from '../../composables/useAdminApi'
 import { useAdminData } from '../../composables/useAdminData'
 import { usePosOrder } from '../../composables/usePosOrder'
+import { usePosTerminal } from '../../composables/usePosTerminal'
 import PosMenuGrid from './PosMenuGrid.vue'
 import PosOrderPanel from './PosOrderPanel.vue'
 import PosCashPayment from './PosCashPayment.vue'
 import PosCardPayment from './PosCardPayment.vue'
 import PosStripePayment from './PosStripePayment.vue'
 import PosQrPayment from './PosQrPayment.vue'
+import PosTerminalPayment from './PosTerminalPayment.vue'
 
 const { adminFetch, message } = useAdminApi()
 const { menuData } = useAdminData()
 const { items, total, addItem, incrementItem, decrementItem, removeItem, clearOrder, getCheckoutItems } = usePosOrder()
+const { readerStatus, error: terminalError, initTerminal, discoverAndConnect } = usePosTerminal()
 
-type PaymentModal = 'cash' | 'card_external' | 'stripe_pos' | 'stripe_qr' | null
+const readerConnected = computed(() => readerStatus.value === 'connected')
+
+onMounted(async () => {
+  await initTerminal()
+  await discoverAndConnect()
+})
+
+type PaymentModal = 'cash' | 'card_external' | 'stripe_terminal' | 'stripe_pos' | 'stripe_qr' | null
 const activePaymentModal = ref<PaymentModal>(null)
 const paymentLoading = ref(false)
 const lastCompletedOrder = ref<{ id: string; method: string; change?: number } | null>(null)
 
-function openPayment(method: 'cash' | 'card_external' | 'stripe_pos' | 'stripe_qr') {
+function openPayment(method: 'cash' | 'card_external' | 'stripe_terminal' | 'stripe_pos' | 'stripe_qr') {
   activePaymentModal.value = method
 }
 
@@ -96,12 +106,33 @@ function completeQrPayment(orderId: string) {
   closePayment()
 }
 
+function completeTerminalPayment(orderId: string) {
+  lastCompletedOrder.value = { id: orderId, method: 'Terminal' }
+  clearOrder()
+  closePayment()
+}
+
 function dismissSuccess() {
   lastCompletedOrder.value = null
 }
 </script>
 
 <template>
+  <!-- Reader Status -->
+  <div class="flex items-center gap-2 mb-2 text-sm">
+    <span
+      :class="['inline-block w-2.5 h-2.5 rounded-full', readerConnected ? 'bg-green-500' : readerStatus === 'discovering' || readerStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500']"
+    ></span>
+    <span v-if="readerConnected" class="text-neutral-600">Reader: Connected</span>
+    <span v-else-if="readerStatus === 'discovering'" class="text-neutral-500">Discovering readers...</span>
+    <span v-else-if="readerStatus === 'connecting'" class="text-neutral-500">Connecting to reader...</span>
+    <template v-else>
+      <span class="text-neutral-500">Reader: Disconnected</span>
+      <button @click="discoverAndConnect" class="text-blue-600 hover:text-blue-700 underline text-xs">Reconnect</button>
+    </template>
+    <span v-if="terminalError && !readerConnected" class="text-red-500 text-xs">{{ terminalError }}</span>
+  </div>
+
   <div class="flex flex-col lg:flex-row gap-4 h-[calc(100vh-12rem)]">
     <!-- Menu Grid (left) -->
     <div class="lg:w-3/5 bg-white rounded-lg shadow p-4 overflow-hidden flex flex-col min-h-[300px]">
@@ -113,6 +144,7 @@ function dismissSuccess() {
       <PosOrderPanel
         :items="items"
         :total="total"
+        :readerConnected="readerConnected"
         @increment="incrementItem"
         @decrement="decrementItem"
         @remove="removeItem"
@@ -173,6 +205,14 @@ function dismissSuccess() {
     :total="total"
     :items="items"
     @complete="completeQrPayment"
+    @cancel="closePayment"
+  />
+
+  <PosTerminalPayment
+    v-if="activePaymentModal === 'stripe_terminal'"
+    :total="total"
+    :items="items"
+    @complete="completeTerminalPayment"
     @cancel="closePayment"
   />
 </template>

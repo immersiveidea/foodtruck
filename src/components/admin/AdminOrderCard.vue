@@ -58,7 +58,7 @@ const emit = defineEmits<{
         </div>
         <div v-if="order.paymentMethod">
           <p class="text-neutral-500">Payment</p>
-          <p class="font-medium">{{ order.paymentMethod === 'cash' ? 'Cash' : order.paymentMethod === 'card_external' ? 'External Card' : order.paymentMethod === 'stripe_pos' ? 'Stripe (POS)' : order.paymentMethod === 'stripe_qr' ? 'QR Code' : 'Online' }}</p>
+          <p class="font-medium">{{ order.paymentMethod === 'cash' ? 'Cash' : order.paymentMethod === 'card_external' ? 'External Card' : order.paymentMethod === 'stripe_terminal' ? 'Terminal' : order.paymentMethod === 'stripe_pos' ? 'Stripe (POS)' : order.paymentMethod === 'stripe_qr' ? 'QR Code' : 'Online' }}</p>
         </div>
         <div v-if="order.cashTendered">
           <p class="text-neutral-500">Cash Tendered</p>

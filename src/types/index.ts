@@ -109,7 +109,7 @@ export interface CartItem {
 }
 
 export type OrderStatus = 'pending' | 'paid' | 'fulfilled' | 'cancelled'
-export type PaymentMethod = 'stripe_online' | 'stripe_pos' | 'stripe_qr' | 'cash' | 'card_external'
+export type PaymentMethod = 'stripe_online' | 'stripe_pos' | 'stripe_qr' | 'stripe_terminal' | 'cash' | 'card_external'
 export type OrderSource = 'online' | 'pos'
 
 export interface OrderLineItem {

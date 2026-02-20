@@ -4,6 +4,7 @@ import type { PosOrderItem } from '../../composables/usePosOrder'
 defineProps<{
   items: PosOrderItem[]
   total: number
+  readerConnected: boolean
 }>()
 
 const emit = defineEmits<{
@@ -11,7 +12,7 @@ const emit = defineEmits<{
   decrement: [categoryId: string, itemName: string]
   remove: [categoryId: string, itemName: string]
   clear: []
-  pay: [method: 'cash' | 'card_external' | 'stripe_pos' | 'stripe_qr']
+  pay: [method: 'cash' | 'card_external' | 'stripe_terminal' | 'stripe_pos' | 'stripe_qr']
 }>()
 </script>
 
@@ -78,10 +79,15 @@ const emit = defineEmits<{
           Cash
         </button>
         <button
-          @click="emit('pay', 'card_external')"
-          class="py-3 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700"
+          @click="emit('pay', 'stripe_terminal')"
+          class="py-3 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 relative"
         >
-          Card
+          <span class="flex items-center justify-center gap-1.5">
+            Card
+            <span
+              :class="['inline-block w-2 h-2 rounded-full', readerConnected ? 'bg-green-300' : 'bg-red-300']"
+            ></span>
+          </span>
         </button>
         <button
           @click="emit('pay', 'stripe_pos')"
@@ -94,6 +100,15 @@ const emit = defineEmits<{
           class="py-3 bg-neutral-700 text-white rounded-lg font-medium text-sm hover:bg-neutral-800"
         >
           QR Code
+        </button>
+      </div>
+
+      <div v-if="items.length > 0" class="flex justify-between items-center mb-2">
+        <button
+          @click="emit('pay', 'card_external')"
+          class="text-xs text-neutral-400 hover:text-neutral-600 underline"
+        >
+          Manual Card
         </button>
       </div>
 
