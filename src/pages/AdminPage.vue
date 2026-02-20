@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminApi } from '../composables/useAdminApi'
 import { useAdminData } from '../composables/useAdminData'
+import AdminPosTab from '../components/admin/AdminPosTab.vue'
 import AdminMenuTab from '../components/admin/AdminMenuTab.vue'
 import AdminScheduleTab from '../components/admin/AdminScheduleTab.vue'
 import AdminBookingsTab from '../components/admin/AdminBookingsTab.vue'
@@ -18,7 +19,7 @@ const router = useRouter()
 const { adminKey, isAuthenticated, loading, message, adminFetch, logout } = useAdminApi()
 const { bookingsData, ordersData, loadAllData } = useAdminData()
 
-const validTabs = ['menu', 'schedule', 'bookings', 'orders', 'hero', 'about', 'social', 'favicon', 'backup'] as const
+const validTabs = ['pos', 'menu', 'schedule', 'bookings', 'orders', 'hero', 'about', 'social', 'favicon', 'backup'] as const
 type TabKey = typeof validTabs[number]
 
 const activeTab = computed<TabKey>(() => {
@@ -51,6 +52,7 @@ onMounted(() => {
 })
 
 const tabs = [
+  { key: 'pos', label: 'POS' },
   { key: 'menu', label: 'Menu' },
   { key: 'schedule', label: 'Schedule' },
   { key: 'bookings', label: 'Bookings' },
@@ -91,7 +93,7 @@ function selectTab(key: string) {
       </div>
     </header>
 
-    <main class="max-w-4xl mx-auto py-8 px-4">
+    <main :class="['mx-auto py-8 px-4', activeTab === 'pos' ? 'max-w-full' : 'max-w-4xl']">
       <!-- Message -->
       <div
         v-if="message"
@@ -204,6 +206,7 @@ function selectTab(key: string) {
           </button>
         </div>
 
+        <AdminPosTab v-if="activeTab === 'pos'" />
         <AdminMenuTab v-if="activeTab === 'menu'" />
         <AdminScheduleTab v-if="activeTab === 'schedule'" />
         <AdminBookingsTab v-if="activeTab === 'bookings'" />

@@ -19,9 +19,12 @@ const emit = defineEmits<{
   <div class="border border-neutral-200 rounded-lg overflow-hidden">
     <div @click="emit('toggle', order.id)" class="p-4 cursor-pointer hover:bg-neutral-50 flex justify-between items-center">
       <div class="flex-1">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
           <span :class="['px-2 py-0.5 text-xs font-medium rounded-full', order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'paid' ? 'bg-green-100 text-green-800' : order.status === 'fulfilled' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800']">
             {{ order.status }}
+          </span>
+          <span v-if="order.source" :class="['px-2 py-0.5 text-xs font-medium rounded-full', order.source === 'pos' ? 'bg-purple-100 text-purple-800' : 'bg-sky-100 text-sky-800']">
+            {{ order.source === 'pos' ? 'POS' : 'Online' }}
           </span>
           <span class="font-medium">{{ order.customerName || 'Guest' }}</span>
           <span class="text-sm text-neutral-500">${{ order.total.toFixed(2) }}</span>
@@ -52,6 +55,14 @@ const emit = defineEmits<{
         <div>
           <p class="text-neutral-500">Placed</p>
           <p class="font-medium">{{ formatTimestamp(order.createdAt) }}</p>
+        </div>
+        <div v-if="order.paymentMethod">
+          <p class="text-neutral-500">Payment</p>
+          <p class="font-medium">{{ order.paymentMethod === 'cash' ? 'Cash' : order.paymentMethod === 'card_external' ? 'External Card' : order.paymentMethod === 'stripe_pos' ? 'Stripe (POS)' : order.paymentMethod === 'stripe_qr' ? 'QR Code' : 'Online' }}</p>
+        </div>
+        <div v-if="order.cashTendered">
+          <p class="text-neutral-500">Cash Tendered</p>
+          <p class="font-medium">${{ order.cashTendered.toFixed(2) }} (change: ${{ (order.changeDue ?? 0).toFixed(2) }})</p>
         </div>
       </div>
 

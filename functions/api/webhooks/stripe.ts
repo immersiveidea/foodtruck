@@ -68,5 +68,23 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
   }
 
+  if (event.type === 'payment_intent.succeeded') {
+    const paymentIntent = event.data.object as Stripe.PaymentIntent
+    const orderId = paymentIntent.metadata?.orderId
+
+    if (orderId) {
+      const orders = await context.env.CONTENT.get('orders', 'json') as Order[] | null ?? []
+      const index = orders.findIndex(o => o.id === orderId)
+
+      if (index !== -1 && orders[index].status === 'pending') {
+        orders[index].status = 'paid'
+        orders[index].updatedAt = new Date().toISOString()
+        orders[index].stripePaymentIntentId = paymentIntent.id
+
+        await context.env.CONTENT.put('orders', JSON.stringify(orders))
+      }
+    }
+  }
+
   return new Response('ok', { status: 200 })
 }

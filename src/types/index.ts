@@ -109,6 +109,8 @@ export interface CartItem {
 }
 
 export type OrderStatus = 'pending' | 'paid' | 'fulfilled' | 'cancelled'
+export type PaymentMethod = 'stripe_online' | 'stripe_pos' | 'stripe_qr' | 'cash' | 'card_external'
+export type OrderSource = 'online' | 'pos'
 
 export interface OrderLineItem {
   categoryId: string
@@ -124,8 +126,12 @@ export interface Order {
   customerName?: string
   customerEmail?: string
   status: OrderStatus
-  stripeSessionId: string
+  stripeSessionId?: string
   stripePaymentIntentId?: string
+  source?: OrderSource
+  paymentMethod?: PaymentMethod
+  cashTendered?: number
+  changeDue?: number
   createdAt: string
   updatedAt: string
   adminNotes?: string
